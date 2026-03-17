@@ -1,0 +1,77 @@
+{
+    "dominio": "configuracion_pc",
+    "titulo": "Sistema Experto para Configuración de PC",
+    
+    "sintomas": {
+        "categorias": [
+            {
+                "nombre": "Uso principal del equipo",
+                "tipo": "seleccion_unica",
+                "opciones": ["Gaming", "Edición de vídeo", "Programación", "Diseño 3D", "Ofimática", "Streaming"],
+                "por_defecto": "Gaming"
+            },
+            {
+                "nombre": "Nivel de experiencia del usuario",
+                "tipo": "seleccion_unica",
+                "opciones": ["Principiante", "Intermedio", "Avanzado", "Entusiasta"],
+                "por_defecto": "Intermedio"
+            },
+            {
+                "nombre": "Preferencia de marca",
+                "tipo": "seleccion_multiple",
+                "opciones": ["Intel", "AMD", "NVIDIA", "Sin preferencia"],
+                "por_defecto": "Sin preferencia"
+            }
+        ],
+        
+        "observables": [
+            {
+                "nombre": "Presupuesto total (€)",
+                "tipo": "rango",
+                "min": 300,
+                "max": 5000,
+                "por_defecto": 1200
+            },
+            {
+                "nombre": "¿Tiene componentes reutilizables?",
+                "tipo": "booleano",
+                "por_defecto": false
+            },
+            {
+                "nombre": "¿Necesita monitor/periféricos?",
+                "tipo": "booleano",
+                "por_defecto": false
+            },
+            {
+                "nombre": "Comentarios adicionales",
+                "tipo": "texto",
+                "placeholder": "Ej: Necesito WiFi, quiero RGB, etc."
+            }
+        ]
+    },
+    
+    "componentes_recomendados": [
+        {"nombre": "Procesador (CPU)", "requerido": true},
+        {"nombre": "Tarjeta gráfica (GPU)", "requerido": false},
+        {"nombre": "Memoria RAM", "requerido": true},
+        {"nombre": "Placa base", "requerido": true},
+        {"nombre": "Almacenamiento SSD", "requerido": true},
+        {"nombre": "Fuente de alimentación (PSU)", "requerido": true},
+        {"nombre": "Caja", "requerido": true},
+        {"nombre": "Refrigeración CPU", "requerido": false}
+    ],
+    
+    "modos_conocimiento": [
+        "Local (solo PDFs del usuario)",
+        "Web (PDFs + búsqueda en internet)"
+    ],
+    "modo_por_defecto": "Local (solo PDFs del usuario)",
+    
+    "colores": {
+        "primario": "#2c3e50",
+        "secundario": "#3498db",
+        "exito": "#27ae60",
+        "peligro": "#e74c3c",
+        "fondo": "#ecf0f1"
+    }
+}
