@@ -20,17 +20,23 @@ class VentanaPrincipal(QMainWindow):
         self.config = config
         self.constructor = ConstructorDinamico(config)
         
-        self.controlador.set_vista_principal(self)
+        self.controlador.set_vista_principal(self) 
         
         self.ventana_hipotesis = None
+    
         self.ventana_diagnostico = None
         self.ventana_justificacion = None
         self.ventana_pdfs = None
         self.ventana_fuentes = None
+        self.btn_fuentes_web = None  # Inicializar como None
         
         self.contador_ventanas = 0
         
         self.init_ui()
+        
+        # Después de init_ui, el botón ya existe, ahora podemos actualizar su estado
+        self._cambiar_opciones_modelo()
+        self._actualizar_info_modo()
     
     def init_ui(self):
         """Inicializa la interfaz - Enfoque en asesoramiento PC"""
@@ -104,9 +110,16 @@ class VentanaPrincipal(QMainWindow):
         """Panel con información del usuario/cliente"""
         panel = QGroupBox("👤 Perfil del usuario")
         panel.setStyleSheet("""
-            QGroupBox { font-size: 14px; font-weight: bold; }
+            QGroupBox { 
+                font-size: 14px; 
+                font-weight: bold;
+                margin-top: 8px;
+                padding-top: 8px;
+            }
         """)
-        layout = QGridLayout(panel)
+        
+        # Crear layout para el panel
+        layout = QGridLayout(panel)  # <-- ESTA LÍNEA FALTABA
         
         # Nivel de experiencia
         layout.addWidget(QLabel("Nivel de experiencia:"), 0, 0)
@@ -142,9 +155,8 @@ class VentanaPrincipal(QMainWindow):
         panel = QGroupBox("🖱️ Componentes actuales (los que ya posees)")
         panel.setCheckable(True)
         panel.setChecked(False)
-        layout = QGridLayout(panel)
+        layout = QGridLayout(panel)  # <-- ESTO DEBE ESTAR
         
-        # Lista de componentes comunes
         fila = 0
         self.componentes_actuales = {}
         
@@ -171,7 +183,7 @@ class VentanaPrincipal(QMainWindow):
             # Campo de texto para especificar modelo
             texto = QLineEdit()
             texto.setPlaceholderText(placeholder)
-            texto.setEnabled(False)  # Deshabilitado hasta que se marque el checkbox
+            texto.setEnabled(False)
             check.toggled.connect(texto.setEnabled)
             layout.addWidget(texto, fila, 2)
             
@@ -207,19 +219,7 @@ class VentanaPrincipal(QMainWindow):
         for texto, valor in usos:
             btn = QPushButton(texto)
             btn.setCheckable(True)
-            btn.setStyleSheet("""
-                QPushButton {
-                    padding: 10px;
-                    border: 2px solid #ddd;
-                    border-radius: 5px;
-                    background: white;
-                }
-                QPushButton:checked {
-                    background: #3498db;
-                    color: white;
-                    border-color: #2980b9;
-                }
-            """)
+            btn.setStyleSheet("QPushButton { padding: 8px; border: 2px solid #ddd; border-radius: 5px; } QPushButton:checked { background: #3498db; color: white; border-color: #2980b9; }")
             btn.clicked.connect(lambda checked, v=valor: self._seleccionar_uso(v))
             usos_layout.addWidget(btn)
             self.botones_uso.append((btn, valor))
@@ -228,14 +228,11 @@ class VentanaPrincipal(QMainWindow):
         
         # Detalles adicionales según uso
         self.detalles_uso = QTextEdit()
-        self.detalles_uso.setPlaceholderText(
-            "Detalles adicionales... (ej: juegos específicos, software, resolución deseada)"
-        )
+        self.detalles_uso.setPlaceholderText("Detalles adicionales... (ej: juegos específicos, software, resolución deseada)")
         self.detalles_uso.setMaximumHeight(80)
         layout.addWidget(self.detalles_uso)
         
         return panel
-    
     def _seleccionar_uso(self, valor):
         """Maneja la selección del uso principal"""
         for btn, v in self.botones_uso:
@@ -281,55 +278,29 @@ class VentanaPrincipal(QMainWindow):
         - Modo Web: PDFs + Internet
         """
         panel = QGroupBox("🧠 Configuración del conocimiento")
-        panel.setStyleSheet("""
-            QGroupBox { 
-                font-size: 14px; 
-                font-weight: bold;
-                border: 2px solid #9b59b6;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
+        panel.setStyleSheet("QGroupBox { font-size: 14px; font-weight: bold; border: 2px solid #9b59b6; margin-top: 10px; padding-top: 10px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }")
+        
         layout = QVBoxLayout(panel)
-        layout.setSpacing(15)  # Espacio entre grupos principales
-        layout.setContentsMargins(10, 10, 10, 10)  # Márgenes alrededor del panel
+        layout.setSpacing(15)
+        layout.setContentsMargins(10, 10, 10, 10)
         
         # ============================================
         # PARTE 1: MODELO DE CONOCIMIENTO A UTILIZAR
         # ============================================
         grupo_modelo = QGroupBox("1. Modelo de conocimiento")
-        grupo_modelo.setStyleSheet("""
-            QGroupBox { 
-                font-weight: bold;
-                margin-top: 8px;
-                padding-top: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
+        grupo_modelo.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 8px; padding-top: 8px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }")
+        
         modelo_layout = QVBoxLayout(grupo_modelo)
         modelo_layout.setSpacing(10)
-        modelo_layout.setContentsMargins(10, 15, 10, 10)  # Márgenes internos
+        modelo_layout.setContentsMargins(10, 15, 10, 10)
         
-        # Explicación (con más separación)
-        info_modelo = QLabel(
-            "<b>Selecciona el enfoque para el razonamiento:</b><br>"
-            "<span style='color: #666; font-size: 11px;'>"
-            "Comparativa entre metodología estructurada (CommonKADS) y modelos de lenguaje (LLM)</span>"
-        )
+        # Explicación
+        info_modelo = QLabel("<b>Selecciona el enfoque para el razonamiento:</b><br><span style='color: #666; font-size: 11px;'>Comparativa entre metodología estructurada (CommonKADS) y modelos de lenguaje (LLM)</span>")
         info_modelo.setWordWrap(True)
-        info_modelo.setStyleSheet("margin-bottom: 8px;")  # Espacio debajo
+        info_modelo.setStyleSheet("margin-bottom: 8px;")
         modelo_layout.addWidget(info_modelo)
         
-        # Radio buttons para selección de modelo (con espaciado)
+        # Radio buttons para selección de modelo
         radios_widget = QWidget()
         radios_layout = QHBoxLayout(radios_widget)
         radios_layout.setContentsMargins(0, 5, 0, 5)
@@ -345,7 +316,7 @@ class VentanaPrincipal(QMainWindow):
         radios_layout.addStretch()
         modelo_layout.addWidget(radios_widget)
         
-        # Opciones específicas para LLM (con margen superior)
+        # Opciones específicas para LLM
         self.llm_options = QWidget()
         llm_layout = QHBoxLayout(self.llm_options)
         llm_layout.setContentsMargins(20, 10, 5, 5)
@@ -353,12 +324,7 @@ class VentanaPrincipal(QMainWindow):
         
         llm_layout.addWidget(QLabel("Modelo Ollama:"))
         self.combo_llm = QComboBox()
-        self.combo_llm.addItems([
-            "qwen2.5:7b",
-            "llama3.1:8b",
-            "mistral:7b",
-            "deepseek-coder:6.7b"
-        ])
+        self.combo_llm.addItems(["qwen2.5:7b", "llama3.1:8b", "mistral:7b", "deepseek-coder:6.7b"])
         self.combo_llm.setMinimumWidth(150)
         llm_layout.addWidget(self.combo_llm)
         
@@ -369,7 +335,7 @@ class VentanaPrincipal(QMainWindow):
         llm_layout.addStretch()
         modelo_layout.addWidget(self.llm_options)
         
-        # Opciones específicas para CommonKADS (con margen superior)
+        # Opciones específicas para CommonKADS
         self.commonkads_options = QWidget()
         common_layout = QHBoxLayout(self.commonkads_options)
         common_layout.setContentsMargins(20, 10, 5, 5)
@@ -406,28 +372,14 @@ class VentanaPrincipal(QMainWindow):
         # PARTE 2: MODO DE CONOCIMIENTO (LOCAL/WEB)
         # ============================================
         grupo_modo = QGroupBox("2. Modo de conocimiento")
-        grupo_modo.setStyleSheet("""
-            QGroupBox { 
-                font-weight: bold;
-                margin-top: 8px;
-                padding-top: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
+        grupo_modo.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 8px; padding-top: 8px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }")
+        
         modo_layout = QVBoxLayout(grupo_modo)
         modo_layout.setSpacing(10)
         modo_layout.setContentsMargins(10, 15, 10, 10)
         
         # Explicación
-        info_modo = QLabel(
-            "<b>Selecciona las fuentes de información:</b><br>"
-            "<span style='color: #666; font-size: 11px;'>"
-            "Local: solo PDFs del usuario | Web: PDFs + búsqueda en internet</span>"
-        )
+        info_modo = QLabel("<b>Selecciona las fuentes de información:</b><br><span style='color: #666; font-size: 11px;'>Local: solo PDFs del usuario | Web: PDFs + búsqueda en internet</span>")
         info_modo.setWordWrap(True)
         info_modo.setStyleSheet("margin-bottom: 8px;")
         modo_layout.addWidget(info_modo)
@@ -448,17 +400,9 @@ class VentanaPrincipal(QMainWindow):
         modos_layout.addStretch()
         modo_layout.addWidget(modos_widget)
         
-        # Información adicional según modo (con márgenes)
+        # Información adicional según modo
         self.info_modo = QLabel()
-        self.info_modo.setStyleSheet("""
-            color: #666; 
-            font-size: 11px; 
-            padding: 8px; 
-            background: #f0f0f0; 
-            border-radius: 3px;
-            margin-top: 5px;
-            margin-bottom: 5px;
-        """)
+        self.info_modo.setStyleSheet("color: #666; font-size: 11px; padding: 8px; background: #f0f0f0; border-radius: 3px; margin-top: 5px; margin-bottom: 5px;")
         self.info_modo.setWordWrap(True)
         modo_layout.addWidget(self.info_modo)
         
@@ -479,18 +423,8 @@ class VentanaPrincipal(QMainWindow):
         # PARTE 3: ESTADO ACTUAL
         # ============================================
         grupo_estado = QGroupBox("Estado actual")
-        grupo_estado.setStyleSheet("""
-            QGroupBox { 
-                font-weight: bold;
-                margin-top: 8px;
-                padding-top: 8px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
-            }
-        """)
+        grupo_estado.setStyleSheet("QGroupBox { font-weight: bold; margin-top: 8px; padding-top: 8px; } QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }")
+        
         estado_layout = QHBoxLayout(grupo_estado)
         estado_layout.setContentsMargins(10, 15, 10, 10)
         estado_layout.setSpacing(10)
@@ -512,7 +446,6 @@ class VentanaPrincipal(QMainWindow):
         self._actualizar_info_modo()
         
         return panel
-
     def _cambiar_opciones_modelo(self):
         """Muestra/oculta opciones según el modelo seleccionado"""
         if self.radio_llm.isChecked():
@@ -522,12 +455,11 @@ class VentanaPrincipal(QMainWindow):
             self.llm_options.setVisible(False)
             self.commonkads_options.setVisible(True)
         
-        # Actualizar estado
-        if hasattr(self, 'label_estado_conocimiento'):
-            modelo_usado = "LLM" if self.radio_llm.isChecked() else "CommonKADS"
-            modo_usado = "Web" if self.radio_web.isChecked() else "Local"
-            self.label_estado_conocimiento.setText(f"✅ {modelo_usado} | Modo {modo_usado}")
-
+        # Actualizar estado del botón de fuentes web según el modo actual
+        if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
+            if hasattr(self, 'radio_web'):
+                self.btn_fuentes_web.setEnabled(self.radio_web.isChecked())
+   
     def _actualizar_info_modo(self):
         """Actualiza la información según el modo seleccionado"""
         if self.radio_web.isChecked():
@@ -535,18 +467,23 @@ class VentanaPrincipal(QMainWindow):
                 "🌐 MODO WEB: El sistema consultará información en internet además de tus PDFs. "
                 "Las fuentes utilizadas quedarán registradas en la ventana de fuentes web."
             )
+            # Habilitar botón de fuentes web
+            if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
+                self.btn_fuentes_web.setEnabled(True)
         else:
             self.info_modo.setText(
                 "📁 MODO LOCAL: El diagnóstico se basará exclusivamente en los PDFs que cargues "
                 "y en los datos que introduzcas. No se realizarán búsquedas en internet."
             )
+            # Deshabilitar botón de fuentes web
+            if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
+                self.btn_fuentes_web.setEnabled(False)
         
-        # También actualizar el label de estado del modelo (si existe)
+        # También actualizar el label de estado del modelo
         if hasattr(self, 'label_estado_conocimiento'):
             modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
-            modo_usado = "Local" if self.radio_local.isChecked() else "Web"
+            modo_usado = "Web" if self.radio_web.isChecked() else "Local"
             self.label_estado_conocimiento.setText(f"✅ {modelo_usado} | Modo {modo_usado}")
-    
     
     def verificar_ollama(self):
         """Verifica la conexión con Ollama"""
@@ -557,19 +494,6 @@ class VentanaPrincipal(QMainWindow):
         # Simular verificación
         QTimer.singleShot(1500, self._resultado_verificacion)
         
-    
-    def _resultado_verificacion(self):
-        """Muestra el resultado de la verificación"""
-        if hasattr(self, 'label_estado'):
-            self.label_estado.setText("✅ Ollama conectado correctamente")
-        
-        QMessageBox.information(self, "Verificación Ollama",
-            "✅ Conexión exitosa con Ollama\n\n"
-            "Modelos disponibles localmente:\n"
-            "• qwen2.5:7b (instalado)\n"
-            "• llama3.1:8b (no instalado)\n"
-            "• mistral:7b (instalado)\n\n"
-            "Se usará qwen2.5:7b para las consultas.")
     
     def _resultado_verificacion(self):
         """Muestra el resultado de la verificación"""
@@ -631,6 +555,13 @@ class VentanaPrincipal(QMainWindow):
         btn_pdfs.clicked.connect(self.mostrar_ventana_pdfs)
         layout.addWidget(btn_pdfs)
         
+        # BOTÓN DE FUENTES WEB
+        self.btn_fuentes_web = QPushButton("🌐 Ver fuentes web")
+        self.btn_fuentes_web.clicked.connect(self.mostrar_ventana_fuentes)
+        self.btn_fuentes_web.setEnabled(False)  # Inicialmente deshabilitado
+        self.btn_fuentes_web.setStyleSheet("background-color: #9b59b6;")
+        layout.addWidget(self.btn_fuentes_web)
+        
         return panel
     
     def _crear_barra_estado(self):
@@ -672,25 +603,30 @@ class VentanaPrincipal(QMainWindow):
         """Genera posibles configuraciones basadas en necesidades"""
         datos = self._recoger_todos_datos()
         
+        # Actualizar el modo directamente en el modelo del controlador
+        modo_texto = "Web (PDFs + Internet)" if self.radio_web.isChecked() else "Local (solo PDFs)"
+        self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
+        
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
         self.label_estado.setText(f"⏳ Generando configuraciones con {modelo_usado}...")
         QApplication.processEvents()
         
-        # Pasar el tipo de modelo al controlador
         self.controlador.evaluar_hipotesis(datos)
-        
-        # Mostrar ventana de configuraciones
         self.mostrar_ventana_hipotesis()
     
     def obtener_recomendacion(self):
         """Obtiene la recomendación final"""
+        # Actualizar el modo directamente en el modelo del controlador
+        modo_texto = "Web (PDFs + Internet)" if self.radio_web.isChecked() else "Local (solo PDFs)"
+        self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
+        
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
         self.label_estado.setText(f"⏳ Calculando recomendación con {modelo_usado}...")
         QApplication.processEvents()
         
         self.controlador.diagnosticar()
         self.mostrar_ventana_diagnostico()
-    
+        
     def _recoger_componentes_actuales(self):
         """Recoge los componentes que el usuario ha marcado"""
         componentes = {}
@@ -702,6 +638,9 @@ class VentanaPrincipal(QMainWindow):
     
     def _recoger_todos_datos(self):
         """Recoge todos los datos del formulario"""
+        # Determinar el modo como string exacto
+        modo_texto = "Web (PDFs + Internet)" if self.radio_web.isChecked() else "Local (solo PDFs)"
+        
         datos = {
             'perfil': {
                 'experiencia': self.combo_experiencia.currentText(),
@@ -721,16 +660,15 @@ class VentanaPrincipal(QMainWindow):
                 'futuras_ampliaciones': self.check_futuro.isChecked()
             },
             'conocimiento': {
-                # Modelo de conocimiento (CommonKADS vs LLM)
                 'modelo': {
                     'tipo': 'commonkads' if self.radio_commonkads.isChecked() else 'llm',
                     'llm_modelo': self.combo_llm.currentText() if self.radio_llm.isChecked() else None,
                     'archivo_reglas': self.txt_reglas.text() if self.radio_commonkads.isChecked() else None
                 },
-                # Modo de conocimiento (Local vs Web)
                 'modo': {
                     'tipo': 'local' if self.radio_local.isChecked() else 'web',
-                    'usar_pdfs': True,  # Siempre se usan PDFs
+                    'texto': modo_texto,  # Guardar el texto exacto
+                    'usar_pdfs': True,
                     'usar_web': self.radio_web.isChecked()
                 }
             }
@@ -827,7 +765,7 @@ class VentanaPrincipal(QMainWindow):
         self.contador_ventanas += 1
     
     def actualizar_vistas(self):
-        """Actualiza vistas cuando el modelo cambia"""
+        """Actualiza vistas cuando el modelo cambia"""  
         ventanas = [
             ('ventana_hipotesis', 'actualizar_datos'),
             ('ventana_diagnostico', 'actualizar_datos'),

@@ -31,7 +31,6 @@ class VentanaDiagnostico(QWidget):
             QTextEdit {
                 font-family: 'Courier New', monospace;
                 font-size: 12px;
-                background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
                 border-radius: 5px;
                 padding: 10px;
