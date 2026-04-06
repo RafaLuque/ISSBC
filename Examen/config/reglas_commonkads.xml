@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<commonkads>
+    <reglas>
+        
+        <!-- Reglas de compatibilidad CPU - Placa base -->
+        <regla nombre="cpu_amd_am4" prioridad="10">
+            <condicion>
+                <campo>cpu_marca</campo>
+                <operador>igual</operador>
+                <valor>AMD</valor>
+            </condicion>
+            <condicion>
+                <campo>cpu_generacion</campo>
+                <operador>contiene</operador>
+                <valor>Ryzen 5000</valor>
+            </condicion>
+            <conclusion>
+                <campo>placa_socket</campo>
+                <valor>AM4</valor>
+            </conclusion>
+            <conclusion>
+                <campo>chipset_recomendado</campo>
+                <valor>B550</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="cpu_amd_am5" prioridad="10">
+            <condicion>
+                <campo>cpu_marca</campo>
+                <operador>igual</operador>
+                <valor>AMD</valor>
+            </condicion>
+            <condicion>
+                <campo>cpu_generacion</campo>
+                <operador>contiene</operador>
+                <valor>Ryzen 7000</valor>
+            </condicion>
+            <conclusion>
+                <campo>placa_socket</campo>
+                <valor>AM5</valor>
+            </conclusion>
+            <conclusion>
+                <campo>chipset_recomendado</campo>
+                <valor>B650</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="cpu_intel_lga1700" prioridad="10">
+            <condicion>
+                <campo>cpu_marca</campo>
+                <operador>igual</operador>
+                <valor>Intel</valor>
+            </condicion>
+            <condicion>
+                <campo>cpu_generacion</campo>
+                <operador>contiene</operador>
+                <valor>12th</valor>
+            </condicion>
+            <conclusion>
+                <campo>placa_socket</campo>
+                <valor>LGA 1700</valor>
+            </conclusion>
+            <conclusion>
+                <campo>chipset_recomendado</campo>
+                <valor>B660</valor>
+            </conclusion>
+        </regla>
+        
+        <!-- Reglas de selección de GPU según uso -->
+        <regla nombre="gaming_1080p" prioridad="15">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Gaming</valor>
+            </condicion>
+            <condicion>
+                <campo>presupuesto</campo>
+                <operador>menor_igual</operador>
+                <valor>1000</valor>
+            </condicion>
+            <conclusion>
+                <campo>gpu_recomendada</campo>
+                <valor>RTX 4060 / RX 7600</valor>
+            </conclusion>
+            <conclusion>
+                <campo>gpu_nivel</campo>
+                <valor>Entrada</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="gaming_1440p" prioridad="15">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Gaming</valor>
+            </condicion>
+            <condicion>
+                <campo>presupuesto</campo>
+                <operador>entre</operador>
+                <valor_min>1000</valor_min>
+                <valor_max>1500</valor_max>
+            </condicion>
+            <conclusion>
+                <campo>gpu_recomendada</campo>
+                <valor>RTX 4070 / RX 7800 XT</valor>
+            </conclusion>
+            <conclusion>
+                <campo>gpu_nivel</campo>
+                <valor>Medio</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="gaming_4k" prioridad="15">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Gaming</valor>
+            </condicion>
+            <condicion>
+                <campo>presupuesto</campo>
+                <operador>mayor_igual</operador>
+                <valor>2000</valor>
+            </condicion>
+            <conclusion>
+                <campo>gpu_recomendada</campo>
+                <valor>RTX 4080 / RX 7900 XTX</valor>
+            </conclusion>
+            <conclusion>
+                <campo>gpu_nivel</campo>
+                <valor>Alto</valor>
+            </conclusion>
+        </regla>
+        
+        <!-- Reglas de RAM según uso -->
+        <regla nombre="ram_gaming" prioridad="12">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Gaming</valor>
+            </condicion>
+            <conclusion>
+                <campo>ram_cantidad</campo>
+                <valor>16GB</valor>
+            </conclusion>
+            <conclusion>
+                <campo>ram_tipo</campo>
+                <valor>DDR5</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="ram_edicion_video" prioridad="12">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Edicion de video</valor>
+            </condicion>
+            <conclusion>
+                <campo>ram_cantidad</campo>
+                <valor>32GB</valor>
+            </conclusion>
+            <conclusion>
+                <campo>ram_tipo</campo>
+                <valor>DDR5</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="ram_ofimatica" prioridad="8">
+            <condicion>
+                <campo>uso_principal</campo>
+                <operador>igual</operador>
+                <valor>Ofimatica</valor>
+            </condicion>
+            <conclusion>
+                <campo>ram_cantidad</campo>
+                <valor>8GB</valor>
+            </conclusion>
+            <conclusion>
+                <campo>ram_tipo</campo>
+                <valor>DDR4</valor>
+            </conclusion>
+        </regla>
+        
+        <!-- Reglas de fuente según GPU -->
+        <regla nombre="fuente_entrada" prioridad="10">
+            <condicion>
+                <campo>gpu_nivel</campo>
+                <operador>igual</operador>
+                <valor>Entrada</valor>
+            </condicion>
+            <conclusion>
+                <campo>fuente_potencia</campo>
+                <valor>550W</valor>
+            </conclusion>
+            <conclusion>
+                <campo>fuente_certificacion</campo>
+                <valor>80+ Bronze</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="fuente_medio" prioridad="10">
+            <condicion>
+                <campo>gpu_nivel</campo>
+                <operador>igual</operador>
+                <valor>Medio</valor>
+            </condicion>
+            <conclusion>
+                <campo>fuente_potencia</campo>
+                <valor>750W</valor>
+            </conclusion>
+            <conclusion>
+                <campo>fuente_certificacion</campo>
+                <valor>80+ Gold</valor>
+            </conclusion>
+        </regla>
+        
+        <regla nombre="fuente_alto" prioridad="10">
+            <condicion>
+                <campo>gpu_nivel</campo>
+                <operador>igual</operador>
+                <valor>Alto</valor>
+            </condicion>
+            <conclusion>
+                <campo>fuente_potencia</campo>
+                <valor>1000W</valor>
+            </conclusion>
+            <conclusion>
+                <campo>fuente_certificacion</campo>
+                <valor>80+ Platinum</valor>
+            </conclusion>
+        </regla>
+        
+    </reglas>
+</commonkads>

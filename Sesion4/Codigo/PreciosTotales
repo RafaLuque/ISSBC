@@ -1,0 +1,4 @@
+c, sum(?precio)
+autogen0:PC_Economico, "965.0"^^xsd:float
+autogen0:PC_Juan, "1005.0"^^xsd:float
+autogen0:PC_Workstation, "1490.0"^^xsd:float

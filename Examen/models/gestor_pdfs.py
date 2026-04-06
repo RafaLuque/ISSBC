@@ -1,49 +1,42 @@
 import os
 import json
-import pickle
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QObject
+from utils.rutas import obtener_ruta_relativa
 
 class GestorPDFs(QObject):
-    """
-    Gestiona la carga y procesamiento de archivos PDF locales.
-    Ahora con persistencia entre sesiones.
-    """
-    
     def __init__(self, modelo):
         super().__init__()
         self.modelo = modelo
-        self.ruta_persistencia = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "config",
-            "pdfs_cache.json"
-        )
-        
-        # Cargar PDFs guardados al iniciar
+        # Usar ruta genérica para el caché
+        self.ruta_persistencia = obtener_ruta_relativa("config/pdfs_cache.json")
         self.cargar_pdfs_guardados()
     
     def seleccionar_pdfs(self, parent_widget):
         """
         Abre diálogo para seleccionar múltiples PDFs
         """
+        # Abrir diálogo en la carpeta de pdfs_utilizados por defecto
+        carpeta_pdfs = obtener_ruta_relativa("pdfs_utilizados")
+        if not os.path.exists(carpeta_pdfs):
+            os.makedirs(carpeta_pdfs, exist_ok=True)
+        
         archivos, _ = QFileDialog.getOpenFileNames(
             parent_widget,
             "Seleccionar archivos PDF",
-            "",
+            carpeta_pdfs,  # <-- Carpeta por defecto
             "Archivos PDF (*.pdf)"
         )
         
         for archivo in archivos:
             if archivo.lower().endswith('.pdf'):
                 nombre = os.path.basename(archivo)
-                tamaño = os.path.getsize(archivo)
-                self.modelo.agregar_pdf(archivo, nombre, tamaño)
+                tamano = os.path.getsize(archivo)
+                self.modelo.agregar_pdf(archivo, nombre, tamano)
         
-        # Guardar lista actualizada
         self.guardar_pdfs()
-        
         return len(archivos)
-    
+        
     def eliminar_pdf_seleccionado(self, indice):
         """Elimina un PDF por su índice"""
         self.modelo.eliminar_pdf(indice)
@@ -78,7 +71,7 @@ class GestorPDFs(QObject):
                     pdfs_para_guardar.append({
                         'ruta': pdf['ruta'],
                         'nombre': pdf['nombre'],
-                        'tamaño': pdf['tamaño']
+                        'tamano': pdf['tamano']
                     })
             
             with open(self.ruta_persistencia, 'w', encoding='utf-8') as f:
@@ -90,28 +83,34 @@ class GestorPDFs(QObject):
             print(f"❌ Error guardando PDFs: {e}")
     
     def cargar_pdfs_guardados(self):
-        """
-        Carga los PDFs guardados en la sesión anterior
-        """
+        """Carga los PDFs guardados en la sesión anterior"""
         try:
             if os.path.exists(self.ruta_persistencia):
                 with open(self.ruta_persistencia, 'r', encoding='utf-8') as f:
                     pdfs_guardados = json.load(f)
                 
-                # Verificar qué archivos siguen existiendo
                 for pdf in pdfs_guardados:
                     if os.path.exists(pdf['ruta']):
+                        # Normalizar: asegurar que la clave es 'tamano'
+                        tamano = pdf.get('tamano')
+                        if tamano is None:
+                            tamano = pdf.get('tamaño', 0)
+                        
+                        # Agregar con clave unificada
                         self.modelo.agregar_pdf(
-                            pdf['ruta'],
-                            pdf['nombre'],
-                            pdf['tamaño']
+                            pdf['ruta'], 
+                            pdf['nombre'], 
+                            tamano
                         )
-                    else:
-                        print(f"⚠️ Archivo no encontrado: {pdf['ruta']}")
-                
-                print(f"✅ Cargados {len(self.modelo.pdfs)} PDFs de sesión anterior")
-            else:
-                print("ℹ️ No hay PDFs guardados de sesiones anteriores")
-                
         except Exception as e:
-            print(f"❌ Error cargando PDFs guardados: {e}")
+            print(f"Error cargando PDFs: {e}")
+
+    def normalizar_pdfs(self):
+        """Normaliza todos los PDFs para usar 'tamano' en lugar de 'tamaño'"""
+        for i, pdf in enumerate(self.modelo._pdfs):
+            if 'tamaño' in pdf and 'tamano' not in pdf:
+                self.modelo._pdfs[i]['tamano'] = pdf['tamaño']
+                # Opcional: eliminar la clave antigua
+                # del self.modelo._pdfs[i]['tamaño']
+        
+        self.guardar_pdfs()

@@ -15,7 +15,7 @@ class ModeloDiagnostico(QObject):
     def __init__(self):
         super().__init__()
         self._sintomas = {}           # Datos ingresados por usuario
-        self._pdfs = []                # Lista de rutas de PDFs [{'ruta': '', 'nombre': '', 'tamaño': 0}]
+        self._pdfs = []                # Lista de rutas de PDFs [{'ruta': '', 'nombre': '', 'tamano': 0}]
         self._hipotesis = []            # Lista de hipótesis [{'nombre': '', 'probabilidad': 0, 'estado': ''}]
         self._diagnostico_final = ""    # Diagnóstico seleccionado
         self._justificacion = ""        # Justificación del diagnóstico
@@ -36,15 +36,14 @@ class ModeloDiagnostico(QObject):
     def pdfs(self):
         return self._pdfs.copy()
     
-    def agregar_pdf(self, ruta, nombre, tamaño):
-       """Añade un PDF a la lista"""
-       self._pdfs.append({
-           'ruta': ruta,
-           'nombre': nombre,
-           'tamaño': tamaño,
-           'fecha': ''  # Se podría añadir fecha
-           })
-       self.pdfs_actualizados.emit()  # Esta señal es importante
+    def agregar_pdf(self, ruta, nombre, tamano):
+        """Añade un PDF a la lista"""
+        self._pdfs.append({
+            'ruta': ruta,
+            'nombre': nombre,
+            'tamano': tamano  
+        })
+        self.pdfs_actualizados.emit()
     
     def eliminar_pdf(self, indice):
         """Elimina un PDF por índice"""

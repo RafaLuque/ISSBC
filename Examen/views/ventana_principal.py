@@ -29,7 +29,7 @@ class VentanaPrincipal(QMainWindow):
         self.ventana_pdfs = None
         self.ventana_fuentes = None
         self.btn_fuentes_web = None  # Inicializar como None
-        
+        self._ultimo_estado_llm = False
         self.contador_ventanas = 0
         
         self.init_ui()
@@ -321,20 +321,45 @@ class VentanaPrincipal(QMainWindow):
         llm_layout = QHBoxLayout(self.llm_options)
         llm_layout.setContentsMargins(20, 10, 5, 5)
         llm_layout.setSpacing(10)
-        
+
         llm_layout.addWidget(QLabel("Modelo Ollama:"))
+
+        # Crear el combo box
         self.combo_llm = QComboBox()
-        self.combo_llm.addItems(["qwen2.5:7b", "llama3.1:8b", "mistral:7b", "deepseek-coder:6.7b"])
+
+        # Obtener los modelos instalados (PRIMERO obtenerlos)
+        modelos_reales = self.controlador.servicio_ollama.obtener_modelos_disponibles()
+        print(f"🔍 Modelos disponibles: {modelos_reales}")  # DEBUG
+
+        # Añadir los modelos al combo
+        self.combo_llm.addItems(modelos_reales)
+
+        # Conectar la señal para cuando el usuario cambie la selección
+        self.combo_llm.currentTextChanged.connect(self._cambiar_modelo_llm)
+
+        # Tratar de autoseleccionar un modelo eficiente (priorizar 3b, luego 7b/8b)
+        seleccionado = False
+        for i, m in enumerate(modelos_reales):
+            m_low = m.lower()
+            if '3b' in m_low:  # Priorizar 3b (más rápido)
+                self.combo_llm.setCurrentIndex(i)
+                seleccionado = True
+                print(f"✅ Seleccionado modelo 3b: {m}")
+                break
+            elif ('8b' in m_low or '7b' in m_low) and '30b' not in m_low:
+                self.combo_llm.setCurrentIndex(i)
+                seleccionado = True
+                print(f"✅ Seleccionado modelo: {m}")
+
+        if not seleccionado and modelos_reales:
+            self.combo_llm.setCurrentIndex(0)
+            print(f"✅ Seleccionado primer modelo disponible: {modelos_reales[0]}")
+
         self.combo_llm.setMinimumWidth(150)
-        llm_layout.addWidget(self.combo_llm)
-        
-        btn_verificar = QPushButton("🔌 Verificar Ollama")
-        btn_verificar.clicked.connect(self.verificar_ollama)
-        llm_layout.addWidget(btn_verificar)
-        
+        llm_layout.addWidget(self.combo_llm)  # Solo una vez
+
         llm_layout.addStretch()
         modelo_layout.addWidget(self.llm_options)
-        
         # Opciones específicas para CommonKADS
         self.commonkads_options = QWidget()
         common_layout = QHBoxLayout(self.commonkads_options)
@@ -446,20 +471,54 @@ class VentanaPrincipal(QMainWindow):
         self._actualizar_info_modo()
         
         return panel
+    
     def _cambiar_opciones_modelo(self):
         """Muestra/oculta opciones según el modelo seleccionado"""
         if self.radio_llm.isChecked():
             self.llm_options.setVisible(True)
             self.commonkads_options.setVisible(False)
+            
+            # Solo actualizar el modelo si es la primera vez o si CommonKADS estaba activo
+            # No actualizar aquí si ya estamos en LLM porque el combo ya lo hará
+            if not hasattr(self, '_ultimo_estado_llm') or not self._ultimo_estado_llm:
+                texto_combo = self.combo_llm.currentText()
+                if texto_combo.strip():
+                    modelo_llm = texto_combo.split()[0]
+                    print(f"🔧 Activando LLM con modelo: {modelo_llm}")
+                    self.controlador.servicio_ollama.cambiar_modelo(modelo_llm)
+            
+            self._ultimo_estado_llm = True
+            
+            # Actualizar estado del botón de fuentes web
+            if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
+                self.btn_fuentes_web.setEnabled(self.radio_web.isChecked())
         else:
             self.llm_options.setVisible(False)
             self.commonkads_options.setVisible(True)
+            self._ultimo_estado_llm = False
+            
+            # Actualizar estado del botón de fuentes web
+            if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
+                self.btn_fuentes_web.setEnabled(False)
+    
+    def _cambiar_modelo_llm(self, nuevo_modelo):
+        """Se ejecuta cuando el usuario cambia el modelo en el combo box"""
+        if nuevo_modelo and nuevo_modelo.strip():
+            modelo_llm = nuevo_modelo.split()[0]  # Extraer "qwen2.5:3b"
+            print(f"🔄 Usuario cambió modelo a: {modelo_llm}")
+            self.controlador.servicio_ollama.cambiar_modelo(modelo_llm)
+            
+            # Actualizar el mensaje de estado
+            if hasattr(self, 'label_estado_conocimiento'):
+                modelo_usado = f"LLM ({modelo_llm})"
+                modo_usado = "Web" if self.radio_web.isChecked() else "Local"
+                self.label_estado_conocimiento.setText(f"✅ {modelo_usado} | Modo {modo_usado}")
+            
+            # Mostrar mensaje temporal en barra de estado
+            if hasattr(self, 'label_estado'):
+                self.label_estado.setText(f"✅ Modelo cambiado a: {modelo_llm}")
+                QTimer.singleShot(2000, lambda: self.label_estado.setText("✅ Sistema listo"))
         
-        # Actualizar estado del botón de fuentes web según el modo actual
-        if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
-            if hasattr(self, 'radio_web'):
-                self.btn_fuentes_web.setEnabled(self.radio_web.isChecked())
-   
     def _actualizar_info_modo(self):
         """Actualiza la información según el modo seleccionado"""
         if self.radio_web.isChecked():
@@ -608,11 +667,11 @@ class VentanaPrincipal(QMainWindow):
         self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
         
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
-        self.label_estado.setText(f"⏳ Generando configuraciones con {modelo_usado}...")
+        self.label_estado.setText(f"⏳ Generando configuraciones con {modelo_usado} (Ejecutando en 2º plano, por favor espera...)")
         QApplication.processEvents()
         
         self.controlador.evaluar_hipotesis(datos)
-        self.mostrar_ventana_hipotesis()
+        # La ventana se mostrará automáticamente desde el QThread al terminar.
     
     def obtener_recomendacion(self):
         """Obtiene la recomendación final"""
@@ -621,11 +680,11 @@ class VentanaPrincipal(QMainWindow):
         self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
         
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
-        self.label_estado.setText(f"⏳ Calculando recomendación con {modelo_usado}...")
+        self.label_estado.setText(f"⏳ Calculando recomendación con {modelo_usado} (Ejecutando en 2º plano, no cierres la app...)")
         QApplication.processEvents()
         
         self.controlador.diagnosticar()
-        self.mostrar_ventana_diagnostico()
+        # Las ventanas se mostrarán automáticamente desde el QThread al terminar.
         
     def _recoger_componentes_actuales(self):
         """Recoge los componentes que el usuario ha marcado"""
@@ -678,19 +737,24 @@ class VentanaPrincipal(QMainWindow):
     # Métodos para ventanas secundarias (con manejo de errores)
     def mostrar_ventana_hipotesis(self):
         """Muestra la ventana de configuraciones posibles"""
+        # Si ya hay una ventana visible, traerla al frente
         if self.ventana_hipotesis is not None:
             try:
                 if self.ventana_hipotesis.isVisible():
                     self.ventana_hipotesis.raise_()
                     self.ventana_hipotesis.activateWindow()
+                    # Forzar actualización de datos por si acaso
+                    self.ventana_hipotesis.actualizar_datos()
                     return
             except RuntimeError:
                 self.ventana_hipotesis = None
         
+        # Crear nueva ventana solo si no existe o fue eliminada
         self.ventana_hipotesis = VentanaHipotesis(self.controlador)
         self._posicionar_ventana_cascada(self.ventana_hipotesis)
         self.ventana_hipotesis.setWindowTitle("Configuraciones posibles")
         self.ventana_hipotesis.show()
+        self.ventana_hipotesis.actualizar_datos()  # Forzar actualización
     
     def mostrar_ventana_diagnostico(self):
         """Muestra la ventana de recomendación final"""

@@ -2,10 +2,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 class VentanaPDFs(QWidget):
-    """
-    Ventana para gestionar los archivos PDF de conocimiento local
-    """
-    
     def __init__(self, controlador, parent=None):
         super().__init__(parent)
         self.controlador = controlador
@@ -19,22 +15,18 @@ class VentanaPDFs(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         
-        # Título
         titulo = QLabel("<h2>Gestión de archivos PDF</h2>")
         titulo.setAlignment(Qt.AlignCenter)
         layout.addWidget(titulo)
         
-        # Lista de PDFs
         self.lista_pdfs = QListWidget()
         self.lista_pdfs.setSelectionMode(QAbstractItemView.MultiSelection)
         layout.addWidget(self.lista_pdfs)
         
-        # Información
         self.label_info = QLabel("0 archivos cargados")
         self.label_info.setAlignment(Qt.AlignRight)
         layout.addWidget(self.label_info)
         
-        # Botones
         botones_layout = QHBoxLayout()
         
         btn_anadir = QPushButton("➕ Añadir PDFs")
@@ -60,20 +52,17 @@ class VentanaPDFs(QWidget):
         layout.addLayout(botones_layout)
     
     def anadir_pdfs(self):
-        """Añade nuevos PDFs usando el gestor"""
         num = self.controlador.gestor_pdfs.seleccionar_pdfs(self)
         if num > 0:
             self.actualizar_lista()
             QMessageBox.information(self, "Éxito", f"Se añadieron {num} archivo(s)")
     
     def eliminar_seleccionados(self):
-        """Elimina los PDFs seleccionados"""
         seleccionados = self.lista_pdfs.selectedItems()
         if not seleccionados:
             QMessageBox.warning(self, "Aviso", "Selecciona al menos un PDF")
             return
         
-        # Eliminar en orden inverso para no afectar índices
         for item in reversed(seleccionados):
             fila = self.lista_pdfs.row(item)
             self.controlador.gestor_pdfs.eliminar_pdf_seleccionado(fila)
@@ -81,7 +70,6 @@ class VentanaPDFs(QWidget):
         self.actualizar_lista()
     
     def vaciar_todo(self):
-        """Elimina todos los PDFs"""
         if self.controlador.modelo.pdfs:
             reply = QMessageBox.question(
                 self, "Confirmar", 
@@ -98,7 +86,12 @@ class VentanaPDFs(QWidget):
         pdfs = self.controlador.modelo.pdfs
         
         for pdf in pdfs:
-            item_text = f"{pdf['nombre']} ({pdf['tamaño']/1024:.1f} KB)"
+            # Compatibilidad: puede venir como 'tamano' o 'tamaño'
+            tamano = pdf.get('tamano')
+            if tamano is None:
+                tamano = pdf.get('tamaño', 0)
+            
+            item_text = f"{pdf['nombre']} ({tamano/1024:.1f} KB)"
             item = QListWidgetItem(item_text)
             item.setData(Qt.UserRole, pdf['ruta'])
             self.lista_pdfs.addItem(item)

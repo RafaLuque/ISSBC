@@ -88,5 +88,7 @@ class VentanaJustificacion(QWidget):
         # Evidencias de PDFs
         self.lista_evidencias.clear()
         for pdf in self.controlador.modelo.pdfs:
-            self.lista_evidencias.addItem(f"📄 {pdf['nombre']} ({pdf['tamaño']/1024:.1f} KB)")# -*- coding: utf-8 -*-
-
+            tamano = pdf.get('tamano')
+            if tamano is None:
+                tamano = pdf.get('tamaño', 0)
+            self.lista_evidencias.addItem(f"📄 {pdf['nombre']} ({tamano/1024:.1f} KB)")

@@ -1,7 +1,12 @@
 [
   {
-    "ruta": "/Users/hugo/Documents/InterfazTrabajoISSBC/pdfs_utilzados/# GUÍA DE COMPATIBILIDAD DE COMPONENTES PC.pdf",
-    "nombre": "# GUÍA DE COMPATIBILIDAD DE COMPONENTES PC.pdf",
-    "tamaño": 95509
+    "ruta": "/home/rafael/Escritorio/ISSBC/Examen/pdfs_utilizados/precios_espana_2025.pdf",
+    "nombre": "precios_espana_2025.pdf",
+    "tamano": 37328
+  },
+  {
+    "ruta": "/home/rafael/Escritorio/ISSBC/Examen/pdfs_utilizados/guia_compatibilidad.pdf",
+    "nombre": "guia_compatibilidad.pdf",
+    "tamano": 95509
   }
 ]
