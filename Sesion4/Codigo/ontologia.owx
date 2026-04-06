@@ -321,9 +321,6 @@
     <Declaration>
         <NamedIndividual IRI="#PC_Workstation"/>
     </Declaration>
-    <Declaration>
-        <AnnotationProperty IRI="http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled"/>
-    </Declaration>
     <EquivalentClasses>
         <Class IRI="#OWLClass_30322155_7a6b_44ed_972b_03adddbbb71a"/>
         <ObjectIntersectionOf>
@@ -1715,47 +1712,6 @@
         <DataProperty IRI="#OWLDataProperty_e0d0b788_a427_4db4_9883_41fd44debc1d"/>
         <Datatype abbreviatedIRI="xsd:integer"/>
     </DataPropertyRange>
-    <DLSafeRule>
-        <Annotation>
-            <AnnotationProperty IRI="http://swrl.stanford.edu/ontologies/3.3/swrla.owl#isRuleEnabled"/>
-            <Literal datatypeIRI="http://www.w3.org/2001/XMLSchema#boolean">true</Literal>
-        </Annotation>
-        <Annotation>
-            <AnnotationProperty abbreviatedIRI="rdfs:comment"/>
-            <Literal></Literal>
-        </Annotation>
-        <Annotation>
-            <AnnotationProperty abbreviatedIRI="rdfs:label"/>
-            <Literal>S1</Literal>
-        </Annotation>
-        <Body>
-            <ClassAtom>
-                <Class IRI="#OWLClass_b599446f_6afd_437e_8962_a6f12a057081"/>
-                <Variable IRI="/c"/>
-            </ClassAtom>
-            <ObjectPropertyAtom>
-                <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
-                <Variable IRI="/c"/>
-                <Variable IRI="/comp"/>
-            </ObjectPropertyAtom>
-            <DataPropertyAtom>
-                <DataProperty IRI="#OWLDataProperty_d054b5bf_8791_44cb_b63b_7c549a6de55a"/>
-                <Variable IRI="/comp"/>
-                <Variable IRI="/precio"/>
-            </DataPropertyAtom>
-        </Body>
-        <Head>
-            <BuiltInAtom IRI="http://sqwrl.stanford.edu/ontologies/built-ins/3.4/sqwrl.owl#select">
-                <Variable IRI="/c"/>
-            </BuiltInAtom>
-            <BuiltInAtom IRI="http://sqwrl.stanford.edu/ontologies/built-ins/3.4/sqwrl.owl#sum">
-                <Variable IRI="/precio"/>
-            </BuiltInAtom>
-            <BuiltInAtom IRI="http://sqwrl.stanford.edu/ontologies/built-ins/3.4/sqwrl.owl#orderBy">
-                <Variable IRI="/c"/>
-            </BuiltInAtom>
-        </Head>
-    </DLSafeRule>
     <AnnotationAssertion>
         <AnnotationProperty abbreviatedIRI="rdfs:label"/>
         <IRI>#OWLClass_00604a27_b1ab_4374_8ba8_00f8432e3b20</IRI>
