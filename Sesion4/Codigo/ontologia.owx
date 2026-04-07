@@ -88,6 +88,9 @@
         <Class IRI="#OWLClass_6c485d36_ff60_4252_81f4_a4171cdb4cdc"/>
     </Declaration>
     <Declaration>
+        <Class IRI="#OWLClass_75c0ed8d_fba5_4768_b224_b56807406e69"/>
+    </Declaration>
+    <Declaration>
         <Class IRI="#OWLClass_89771cbe_7039_4c49_ab72_7af18a7d499a"/>
     </Declaration>
     <Declaration>
@@ -259,6 +262,9 @@
         <NamedIndividual IRI="#OWLNamedIndividual_14514fb9_e152_44ae_9816_5fec9792b894"/>
     </Declaration>
     <Declaration>
+        <NamedIndividual IRI="#OWLNamedIndividual_15a6a976_3cda_4818_80f9_3e5ff459dff0"/>
+    </Declaration>
+    <Declaration>
         <NamedIndividual IRI="#OWLNamedIndividual_18074f08_64bb_49a0_86e8_995f5d6db088"/>
     </Declaration>
     <Declaration>
@@ -370,6 +376,58 @@
                     </DataSomeValuesFrom>
                 </ObjectIntersectionOf>
             </ObjectSomeValuesFrom>
+        </ObjectIntersectionOf>
+    </EquivalentClasses>
+    <EquivalentClasses>
+        <Class IRI="#OWLClass_75c0ed8d_fba5_4768_b224_b56807406e69"/>
+        <ObjectIntersectionOf>
+            <Class IRI="#OWLClass_b599446f_6afd_437e_8962_a6f12a057081"/>
+            <ObjectUnionOf>
+                <ObjectIntersectionOf>
+                    <ObjectSomeValuesFrom>
+                        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+                        <ObjectIntersectionOf>
+                            <Class IRI="#OWLClass_1dc297fb_2788_478f_a387_f66a9fd457e7"/>
+                            <DataHasValue>
+                                <DataProperty IRI="#OWLDataProperty_a4623491_7f0c_4599_b8da_103390d2519f"/>
+                                <Literal>&quot;AM5&quot;</Literal>
+                            </DataHasValue>
+                        </ObjectIntersectionOf>
+                    </ObjectSomeValuesFrom>
+                    <ObjectSomeValuesFrom>
+                        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+                        <ObjectIntersectionOf>
+                            <Class IRI="#OWLClass_26b49b86_1edf_4b91_8805_e97096cf772d"/>
+                            <DataHasValue>
+                                <DataProperty IRI="#OWLDataProperty_a4623491_7f0c_4599_b8da_103390d2519f"/>
+                                <Literal>&quot;LGA1700&quot;</Literal>
+                            </DataHasValue>
+                        </ObjectIntersectionOf>
+                    </ObjectSomeValuesFrom>
+                </ObjectIntersectionOf>
+                <ObjectIntersectionOf>
+                    <ObjectSomeValuesFrom>
+                        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+                        <ObjectIntersectionOf>
+                            <Class IRI="#OWLClass_1dc297fb_2788_478f_a387_f66a9fd457e7"/>
+                            <DataHasValue>
+                                <DataProperty IRI="#OWLDataProperty_a4623491_7f0c_4599_b8da_103390d2519f"/>
+                                <Literal>&quot;LGA1700&quot;</Literal>
+                            </DataHasValue>
+                        </ObjectIntersectionOf>
+                    </ObjectSomeValuesFrom>
+                    <ObjectSomeValuesFrom>
+                        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+                        <ObjectIntersectionOf>
+                            <Class IRI="#OWLClass_26b49b86_1edf_4b91_8805_e97096cf772d"/>
+                            <DataHasValue>
+                                <DataProperty IRI="#OWLDataProperty_a4623491_7f0c_4599_b8da_103390d2519f"/>
+                                <Literal>&quot;AM5&quot;</Literal>
+                            </DataHasValue>
+                        </ObjectIntersectionOf>
+                    </ObjectSomeValuesFrom>
+                </ObjectIntersectionOf>
+            </ObjectUnionOf>
         </ObjectIntersectionOf>
     </EquivalentClasses>
     <EquivalentClasses>
@@ -861,6 +919,10 @@
         <NamedIndividual IRI="#OWLNamedIndividual_14514fb9_e152_44ae_9816_5fec9792b894"/>
     </ClassAssertion>
     <ClassAssertion>
+        <Class IRI="#OWLClass_b599446f_6afd_437e_8962_a6f12a057081"/>
+        <NamedIndividual IRI="#OWLNamedIndividual_15a6a976_3cda_4818_80f9_3e5ff459dff0"/>
+    </ClassAssertion>
+    <ClassAssertion>
         <Class IRI="#OWLClass_5bd3b8e9_6a81_421b_8157_5157cba13e93"/>
         <NamedIndividual IRI="#OWLNamedIndividual_18074f08_64bb_49a0_86e8_995f5d6db088"/>
     </ClassAssertion>
@@ -952,6 +1014,16 @@
         <ObjectProperty IRI="#OWLObjectProperty_f7b78a9a_06e8_48db_94a2_5fd971858d7d"/>
         <NamedIndividual IRI="#OWLNamedIndividual_03ff889b_440e_4f26_a25d_4d09d830a07a"/>
         <NamedIndividual IRI="#OWLNamedIndividual_4911c641_7933_4344_9e75_ff7704cb10e7"/>
+    </ObjectPropertyAssertion>
+    <ObjectPropertyAssertion>
+        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+        <NamedIndividual IRI="#OWLNamedIndividual_15a6a976_3cda_4818_80f9_3e5ff459dff0"/>
+        <NamedIndividual IRI="#OWLNamedIndividual_7eaf42ba_9ae0_4aed_af76_5078bc5f1eaa"/>
+    </ObjectPropertyAssertion>
+    <ObjectPropertyAssertion>
+        <ObjectProperty IRI="#OWLObjectProperty_483d7c7f_be45_4510_bf67_d5d1b6a71429"/>
+        <NamedIndividual IRI="#OWLNamedIndividual_15a6a976_3cda_4818_80f9_3e5ff459dff0"/>
+        <NamedIndividual IRI="#OWLNamedIndividual_bc69fd08_f022_4c5a_8f02_ec281eb30d70"/>
     </ObjectPropertyAssertion>
     <ObjectPropertyAssertion>
         <ObjectProperty IRI="#OWLObjectProperty_f7b78a9a_06e8_48db_94a2_5fd971858d7d"/>
@@ -1839,6 +1911,11 @@
     </AnnotationAssertion>
     <AnnotationAssertion>
         <AnnotationProperty abbreviatedIRI="rdfs:label"/>
+        <IRI>#OWLClass_75c0ed8d_fba5_4768_b224_b56807406e69</IRI>
+        <Literal xml:lang="es">Configuracion_Incompatible</Literal>
+    </AnnotationAssertion>
+    <AnnotationAssertion>
+        <AnnotationProperty abbreviatedIRI="rdfs:label"/>
         <IRI>#OWLClass_89771cbe_7039_4c49_ab72_7af18a7d499a</IRI>
         <Literal xml:lang="es">SSD_NVMe</Literal>
     </AnnotationAssertion>
@@ -2056,6 +2133,11 @@
         <AnnotationProperty abbreviatedIRI="rdfs:label"/>
         <IRI>#OWLNamedIndividual_14514fb9_e152_44ae_9816_5fec9792b894</IRI>
         <Literal xml:lang="es">SSD_1TB_NVMe</Literal>
+    </AnnotationAssertion>
+    <AnnotationAssertion>
+        <AnnotationProperty abbreviatedIRI="rdfs:label"/>
+        <IRI>#OWLNamedIndividual_15a6a976_3cda_4818_80f9_3e5ff459dff0</IRI>
+        <Literal xml:lang="es">PC_Incompatible</Literal>
     </AnnotationAssertion>
     <AnnotationAssertion>
         <AnnotationProperty abbreviatedIRI="rdfs:label"/>
