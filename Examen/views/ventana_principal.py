@@ -29,10 +29,16 @@ class VentanaPrincipal(QMainWindow):
         self.ventana_pdfs = None
         self.ventana_fuentes = None
         self.btn_fuentes_web = None  # Inicializar como None
-        self._ultimo_estado_llm = False
+        
         self.contador_ventanas = 0
         
         self.init_ui()
+        
+        # Conectar señal de PDFs para actualizar el label de estado
+        self.controlador.modelo.pdfs_actualizados.connect(self._actualizar_label_pdfs)
+        
+        # Actualizar label con los PDFs ya cargados desde el caché
+        self._actualizar_label_pdfs()
         
         # Después de init_ui, el botón ya existe, ahora podemos actualizar su estado
         self._cambiar_opciones_modelo()
@@ -69,10 +75,6 @@ class VentanaPrincipal(QMainWindow):
         # Panel de necesidades y uso
         panel_necesidades = self._crear_panel_necesidades()
         main_layout.addWidget(panel_necesidades)
-        
-        # Panel de restricciones
-        panel_restricciones = self._crear_panel_restricciones()
-        main_layout.addWidget(panel_restricciones)
         
         # Panel de modos de conocimiento
         panel_modos = self._crear_panel_modos_conocimiento()
@@ -121,23 +123,17 @@ class VentanaPrincipal(QMainWindow):
         # Crear layout para el panel
         layout = QGridLayout(panel)  # <-- ESTA LÍNEA FALTABA
         
-        # Nivel de experiencia
-        layout.addWidget(QLabel("Nivel de experiencia:"), 0, 0)
-        self.combo_experiencia = QComboBox()
-        self.combo_experiencia.addItems(["Principiante", "Intermedio", "Avanzado", "Entusiasta"])
-        layout.addWidget(self.combo_experiencia, 0, 1)
-        
         # Presupuesto disponible
-        layout.addWidget(QLabel("Presupuesto disponible (€):"), 1, 0)
+        layout.addWidget(QLabel("Presupuesto disponible (€):"), 0, 0)
         self.spin_presupuesto = QSpinBox()
         self.spin_presupuesto.setRange(300, 10000)
         self.spin_presupuesto.setValue(1000)
         self.spin_presupuesto.setSingleStep(100)
         self.spin_presupuesto.setSuffix(" €")
-        layout.addWidget(self.spin_presupuesto, 1, 1)
+        layout.addWidget(self.spin_presupuesto, 0, 1)
         
         # Prioridad
-        layout.addWidget(QLabel("Prioridad principal:"), 2, 0)
+        layout.addWidget(QLabel("Prioridad principal:"), 1, 0)
         self.combo_prioridad = QComboBox()
         self.combo_prioridad.addItems([
             "Rendimiento máximo",
@@ -146,7 +142,7 @@ class VentanaPrincipal(QMainWindow):
             "Presupuesto ajustado",
             "Future-proof (duradero)"
         ])
-        layout.addWidget(self.combo_prioridad, 2, 1)
+        layout.addWidget(self.combo_prioridad, 1, 1)
         
         return panel
     
@@ -167,9 +163,7 @@ class VentanaPrincipal(QMainWindow):
             ("Placa base", "Ej: B560M"),
             ("Fuente", "Ej: 650W 80+ Bronze"),
             ("Almacenamiento", "Ej: SSD 500GB"),
-            ("Caja", "Ej: ATX"),
-            ("Monitor", "Ej: 24\" 1080p"),
-            ("Periféricos", "Ej: Teclado, ratón")
+            ("Caja", "Ej: ATX")
         ]
         
         for componente, placeholder in componentes:
@@ -239,36 +233,7 @@ class VentanaPrincipal(QMainWindow):
             btn.setChecked(v == valor)
         self.uso_seleccionado = valor
     
-    def _crear_panel_restricciones(self):
-        """Panel con restricciones y preferencias"""
-        panel = QGroupBox("⚙️ Restricciones y preferencias")
-        layout = QGridLayout(panel)
-        
-        # Preferencia de marca
-        layout.addWidget(QLabel("Marca preferida:"), 0, 0)
-        self.combo_marca = QComboBox()
-        self.combo_marca.addItems(["Sin preferencia", "Intel", "AMD", "NVIDIA"])
-        layout.addWidget(self.combo_marca, 0, 1)
-        
-        # Tamaño de la caja
-        layout.addWidget(QLabel("Tamaño de caja:"), 1, 0)
-        self.combo_caja = QComboBox()
-        self.combo_caja.addItems(["ATX (estándar)", "Micro-ATX (compacto)", "Mini-ITX (muy pequeño)", "No importa"])
-        layout.addWidget(self.combo_caja, 1, 1)
-        
-        # Overclocking
-        self.check_overclock = QCheckBox("Interés en overclocking")
-        layout.addWidget(self.check_overclock, 2, 0, 1, 2)
-        
-        # RGB/Estética
-        self.check_rgb = QCheckBox("Prefiero componentes con RGB/iluminación")
-        layout.addWidget(self.check_rgb, 3, 0, 1, 2)
-        
-        # Futuras ampliaciones
-        self.check_futuro = QCheckBox("Planeo ampliar en el futuro")
-        layout.addWidget(self.check_futuro, 4, 0, 1, 2)
-        
-        return panel
+
     
     def _crear_panel_modos_conocimiento(self):
         """
@@ -321,64 +286,33 @@ class VentanaPrincipal(QMainWindow):
         llm_layout = QHBoxLayout(self.llm_options)
         llm_layout.setContentsMargins(20, 10, 5, 5)
         llm_layout.setSpacing(10)
-
+        
         llm_layout.addWidget(QLabel("Modelo Ollama:"))
-
-        # Crear el combo box
         self.combo_llm = QComboBox()
-
-        # Obtener los modelos instalados (PRIMERO obtenerlos)
+        
+        # Obtener los modelos instalados de verdad o bien una lista default si está capado
         modelos_reales = self.controlador.servicio_ollama.obtener_modelos_disponibles()
-        print(f"🔍 Modelos disponibles: {modelos_reales}")  # DEBUG
-
-        # Añadir los modelos al combo
         self.combo_llm.addItems(modelos_reales)
-
-        # Conectar la señal para cuando el usuario cambie la selección
-        self.combo_llm.currentTextChanged.connect(self._cambiar_modelo_llm)
-
-        # Tratar de autoseleccionar un modelo eficiente (priorizar 3b, luego 7b/8b)
-        seleccionado = False
+        
+        # Tratar de autoseleccionar un modelo eficiente de entre los que se encuentren (ej 7b o 8b)
         for i, m in enumerate(modelos_reales):
             m_low = m.lower()
-            if '3b' in m_low:  # Priorizar 3b (más rápido)
+            if ('8b' in m_low or '7b' in m_low) and '30b' not in m_low:
                 self.combo_llm.setCurrentIndex(i)
-                seleccionado = True
-                print(f"✅ Seleccionado modelo 3b: {m}")
                 break
-            elif ('8b' in m_low or '7b' in m_low) and '30b' not in m_low:
-                self.combo_llm.setCurrentIndex(i)
-                seleccionado = True
-                print(f"✅ Seleccionado modelo: {m}")
-
-        if not seleccionado and modelos_reales:
-            self.combo_llm.setCurrentIndex(0)
-            print(f"✅ Seleccionado primer modelo disponible: {modelos_reales[0]}")
-
+                
         self.combo_llm.setMinimumWidth(150)
-        llm_layout.addWidget(self.combo_llm)  # Solo una vez
+        llm_layout.addWidget(self.combo_llm)
 
+        # Cambiar el modelo en Ollama cada vez que el usuario cambia la selección del combo
+        self.combo_llm.currentIndexChanged.connect(self._al_cambiar_modelo_llm)
+
+        btn_verificar = QPushButton("🔌 Verificar Ollama")
+        btn_verificar.clicked.connect(self.verificar_ollama)
+        llm_layout.addWidget(btn_verificar)
+        
         llm_layout.addStretch()
         modelo_layout.addWidget(self.llm_options)
-        # Opciones específicas para CommonKADS
-        self.commonkads_options = QWidget()
-        common_layout = QHBoxLayout(self.commonkads_options)
-        common_layout.setContentsMargins(20, 10, 5, 5)
-        common_layout.setSpacing(10)
-        
-        common_layout.addWidget(QLabel("Archivo de reglas:"))
-        self.txt_reglas = QLineEdit()
-        self.txt_reglas.setPlaceholderText("reglas_configuracion_pc.xml")
-        self.txt_reglas.setReadOnly(True)
-        self.txt_reglas.setMinimumWidth(200)
-        common_layout.addWidget(self.txt_reglas)
-        
-        btn_cargar = QPushButton("📂 Cargar reglas")
-        btn_cargar.clicked.connect(self.cargar_reglas_commonkads)
-        common_layout.addWidget(btn_cargar)
-        
-        common_layout.addStretch()
-        modelo_layout.addWidget(self.commonkads_options)
         
         # Conectar señal para cambiar visibilidad
         self.radio_llm.toggled.connect(self._cambiar_opciones_modelo)
@@ -471,54 +405,64 @@ class VentanaPrincipal(QMainWindow):
         self._actualizar_info_modo()
         
         return panel
-    
     def _cambiar_opciones_modelo(self):
-        """Muestra/oculta opciones según el modelo seleccionado"""
-        if self.radio_llm.isChecked():
+        """Muestra/oculta opciones y botones según el modelo seleccionado"""
+        usando_llm = self.radio_llm.isChecked()
+
+        if usando_llm:
             self.llm_options.setVisible(True)
-            self.commonkads_options.setVisible(False)
-            
-            # Solo actualizar el modelo si es la primera vez o si CommonKADS estaba activo
-            # No actualizar aquí si ya estamos en LLM porque el combo ya lo hará
-            if not hasattr(self, '_ultimo_estado_llm') or not self._ultimo_estado_llm:
-                texto_combo = self.combo_llm.currentText()
-                if texto_combo.strip():
-                    modelo_llm = texto_combo.split()[0]
-                    print(f"🔧 Activando LLM con modelo: {modelo_llm}")
-                    self.controlador.servicio_ollama.cambiar_modelo(modelo_llm)
-            
-            self._ultimo_estado_llm = True
-            
-            # Actualizar estado del botón de fuentes web
+
+            # Cambiar modelo en el controlador
+            texto_combo = self.combo_llm.currentText()
+            if texto_combo.strip():
+                modelo_llm = texto_combo.split()[0]
+                self.controlador.servicio_ollama.cambiar_modelo(modelo_llm)
+
+            # Fuentes web: disponibles solo en modo Web
             if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
                 self.btn_fuentes_web.setEnabled(self.radio_web.isChecked())
+
+            # Habilitar selector de modo de conocimiento
+            if hasattr(self, 'radio_local'):
+                self.radio_local.setEnabled(True)
+                self.radio_web.setEnabled(True)
         else:
             self.llm_options.setVisible(False)
-            self.commonkads_options.setVisible(True)
-            self._ultimo_estado_llm = False
-            
-            # Actualizar estado del botón de fuentes web
+
+            # Con CommonKADS las fuentes web no aplican
             if hasattr(self, 'btn_fuentes_web') and self.btn_fuentes_web is not None:
                 self.btn_fuentes_web.setEnabled(False)
-    
-    def _cambiar_modelo_llm(self, nuevo_modelo):
-        """Se ejecuta cuando el usuario cambia el modelo en el combo box"""
-        if nuevo_modelo and nuevo_modelo.strip():
-            modelo_llm = nuevo_modelo.split()[0]  # Extraer "qwen2.5:3b"
-            print(f"🔄 Usuario cambió modelo a: {modelo_llm}")
-            self.controlador.servicio_ollama.cambiar_modelo(modelo_llm)
-            
-            # Actualizar el mensaje de estado
-            if hasattr(self, 'label_estado_conocimiento'):
-                modelo_usado = f"LLM ({modelo_llm})"
-                modo_usado = "Web" if self.radio_web.isChecked() else "Local"
-                self.label_estado_conocimiento.setText(f"✅ {modelo_usado} | Modo {modo_usado}")
-            
-            # Mostrar mensaje temporal en barra de estado
-            if hasattr(self, 'label_estado'):
-                self.label_estado.setText(f"✅ Modelo cambiado a: {modelo_llm}")
-                QTimer.singleShot(2000, lambda: self.label_estado.setText("✅ Sistema listo"))
+
+            # Deshabilitar selector de modo de conocimiento (sin sentido con CommonKADS)
+            if hasattr(self, 'radio_local'):
+                self.radio_local.setEnabled(False)
+                self.radio_web.setEnabled(False)
+
+        # Habilitar/deshabilitar botones de acción según modelo
+        solo_compatibilidad = not usando_llm
+        if hasattr(self, 'btn_configuraciones'):
+            self.btn_configuraciones.setEnabled(not solo_compatibilidad)
+            self.btn_configuraciones.setToolTip(
+                "" if not solo_compatibilidad
+                else "Solo disponible con LLM. CommonKADS realiza únicamente análisis de compatibilidad."
+            )
+        if hasattr(self, 'btn_recomendacion'):
+            self.btn_recomendacion.setEnabled(not solo_compatibilidad)
+            self.btn_recomendacion.setToolTip(
+                "" if not solo_compatibilidad
+                else "Solo disponible con LLM. CommonKADS realiza únicamente análisis de compatibilidad."
+            )
         
+    def _al_cambiar_modelo_llm(self):
+        """Notifica al servicio Ollama cuando el usuario cambia el modelo en el combo."""
+        texto = self.combo_llm.currentText().strip()
+        if texto and self.radio_llm.isChecked():
+            modelo = texto.split()[0]
+            self.controlador.servicio_ollama.cambiar_modelo(modelo)
+            print(f"🔄 Modelo Ollama cambiado a: {modelo}")
+            if hasattr(self, 'label_estado'):
+                self.label_estado.setText(f"✅ Modelo Ollama: {modelo}")
+
     def _actualizar_info_modo(self):
         """Actualiza la información según el modo seleccionado"""
         if self.radio_web.isChecked():
@@ -545,26 +489,45 @@ class VentanaPrincipal(QMainWindow):
             self.label_estado_conocimiento.setText(f"✅ {modelo_usado} | Modo {modo_usado}")
     
     def verificar_ollama(self):
-        """Verifica la conexión con Ollama"""
-        if hasattr(self, 'label_estado'):
-            self.label_estado.setText("⏳ Verificando conexión con Ollama...")
+        """Verifica la conexión con Ollama y muestra los modelos disponibles reales"""
+        self.label_estado.setText("⏳ Verificando conexión con Ollama...")
         QApplication.processEvents()
-        
-        # Simular verificación
-        QTimer.singleShot(1500, self._resultado_verificacion)
-        
-    
-    def _resultado_verificacion(self):
-        """Muestra el resultado de la verificación"""
-        # Simulación - siempre éxito para el ejemplo
-        self.label_estado.setText("✅ Ollama conectado correctamente")
+
+        # Comprobar si Ollama está corriendo
+        conectado = self.controlador.servicio_ollama.verificar_conexion()
+
+        if not conectado:
+            self.label_estado.setText("❌ Ollama no disponible")
+            QMessageBox.warning(self, "Verificación Ollama",
+                "❌ No se pudo conectar con Ollama\n\n"
+                f"URL: {self.controlador.servicio_ollama.url_base}\n\n"
+                "Asegúrate de que Ollama esté instalado y ejecutándose:\n"
+                "  1. Instala Ollama desde https://ollama.com\n"
+                "  2. Ejecuta 'ollama serve' en una terminal\n"
+                "  3. Pulsa de nuevo 'Verificar Ollama'")
+            return
+
+        # Obtener modelos disponibles reales
+        modelos = self.controlador.servicio_ollama.obtener_modelos_disponibles()
+
+        # Actualizar el combo de modelos con los datos reales
+        modelo_previo = self.combo_llm.currentText()
+        self.combo_llm.clear()
+        self.combo_llm.addItems(modelos)
+
+        # Intentar mantener la selección previa si sigue disponible
+        idx = self.combo_llm.findText(modelo_previo)
+        if idx >= 0:
+            self.combo_llm.setCurrentIndex(idx)
+
+        modelo_actual = self.combo_llm.currentText()
+        self.label_estado.setText(f"✅ Ollama conectado — {len(modelos)} modelo(s)")
+
+        lista_modelos = "\n".join([f"  • {m}" for m in modelos]) if modelos else "  (ninguno)"
         QMessageBox.information(self, "Verificación Ollama",
-            "✅ Conexión exitosa con Ollama\n\n"
-            "Modelos disponibles localmente:\n"
-            "• qwen2.5:7b (instalado)\n"
-            "• llama3.1:8b (no instalado)\n"
-            "• mistral:7b (instalado)\n\n"
-            "Se usará qwen2.5:7b para las consultas.")
+            f"✅ Conexión exitosa con Ollama\n\n"
+            f"Modelos instalados ({len(modelos)}):\n{lista_modelos}\n\n"
+            f"Modelo seleccionado: {modelo_actual}")
     
     def cargar_reglas_commonkads(self):
         """Carga un archivo de reglas para CommonKADS"""
@@ -592,22 +555,22 @@ class VentanaPrincipal(QMainWindow):
         layout = QHBoxLayout(panel)
         
         # Botón para análisis de compatibilidad
-        btn_compatibilidad = QPushButton("🔍 Analizar compatibilidad")
-        btn_compatibilidad.clicked.connect(self.analizar_compatibilidad)
-        btn_compatibilidad.setStyleSheet("background-color: #3498db;")
-        layout.addWidget(btn_compatibilidad)
+        self.btn_compatibilidad = QPushButton("🔍 Analizar compatibilidad")
+        self.btn_compatibilidad.clicked.connect(self.analizar_compatibilidad)
+        self.btn_compatibilidad.setStyleSheet("background-color: #3498db;")
+        layout.addWidget(self.btn_compatibilidad)
         
         # Botón para generar configuraciones
-        btn_configuraciones = QPushButton("⚡ Generar configuraciones posibles")
-        btn_configuraciones.clicked.connect(self.generar_configuraciones)
-        btn_configuraciones.setStyleSheet("background-color: #27ae60;")
-        layout.addWidget(btn_configuraciones)
+        self.btn_configuraciones = QPushButton("⚡ Generar configuraciones posibles")
+        self.btn_configuraciones.clicked.connect(self.generar_configuraciones)
+        self.btn_configuraciones.setStyleSheet("background-color: #27ae60;")
+        layout.addWidget(self.btn_configuraciones)
         
         # Botón para recomendación final
-        btn_recomendacion = QPushButton("✅ Obtener recomendación final")
-        btn_recomendacion.clicked.connect(self.obtener_recomendacion)
-        btn_recomendacion.setStyleSheet("background-color: #e67e22;")
-        layout.addWidget(btn_recomendacion)
+        self.btn_recomendacion = QPushButton("✅ Obtener recomendación final")
+        self.btn_recomendacion.clicked.connect(self.obtener_recomendacion)
+        self.btn_recomendacion.setStyleSheet("background-color: #e67e22;")
+        layout.addWidget(self.btn_recomendacion)
         
         # Gestión de conocimiento (PDFs)
         btn_pdfs = QPushButton("📁 Manuales/Guías (PDF)")
@@ -633,6 +596,24 @@ class VentanaPrincipal(QMainWindow):
         
         self.label_compatibilidad = QLabel("🔄 Compatibilidad: No analizada")
         self.statusBar().addPermanentWidget(self.label_compatibilidad)
+
+        # Log de archivos de reglas cargados al inicio
+        reglas_xml = getattr(self.controlador.motor_commonkads, 'ruta_reglas', '')
+        ontologia = getattr(self.controlador.motor_commonkads, 'ruta_ontologia', '')
+        num_reglas = len(getattr(self.controlador.motor_commonkads, 'reglas', []))
+        tiene_ontologia = bool(getattr(self.controlador.motor_commonkads, 'ontologia', {}))
+
+        import os
+        partes = []
+        if reglas_xml and os.path.exists(reglas_xml):
+            partes.append(f"📋 {os.path.basename(reglas_xml)} ({num_reglas} reglas)")
+        if ontologia and os.path.exists(ontologia):
+            partes.append(f"🧠 {os.path.basename(ontologia)}{'  ✅' if tiene_ontologia else '  ❌'}")
+
+        texto_log = "  |  ".join(partes) if partes else "⚠️ Sin archivos de reglas"
+        self.label_reglas_log = QLabel(texto_log)
+        self.label_reglas_log.setStyleSheet("color: #555; font-size: 10px; padding-right: 6px;")
+        self.statusBar().addPermanentWidget(self.label_reglas_log)
     
     def analizar_compatibilidad(self):
         """Analiza la compatibilidad de los componentes actuales"""
@@ -642,49 +623,113 @@ class VentanaPrincipal(QMainWindow):
                 "Marca los componentes que tienes para analizar su compatibilidad")
             return
         
-        self.label_estado.setText("⏳ Analizando compatibilidad...")
+        modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
+        self.label_estado.setText(f"⏳ Analizando compatibilidad con {modelo_usado} (Ejecutando en 2º plano, por favor espera...)")
         QApplication.processEvents()
         
-        # Aquí iría la lógica de análisis
-        QTimer.singleShot(1000, lambda: self._mostrar_resultado_compatibilidad(componentes))
+        usar_llm = self.radio_llm.isChecked()
+        # Llamar al controlador de manera asíncrona
+        self.controlador.evaluar_compatibilidad(componentes, usar_llm, lambda ok, res: self._mostrar_resultado_compatibilidad(componentes, ok, res))
     
-    def _mostrar_resultado_compatibilidad(self, componentes):
+    def _mostrar_resultado_compatibilidad(self, componentes, es_compatible, resultado_analisis):
         """Muestra el resultado del análisis de compatibilidad"""
-        self.label_compatibilidad.setText("✅ Compatibilidad: OK")
-        self.label_estado.setText("✅ Análisis completado")
+        if es_compatible:
+            self.label_compatibilidad.setText("✅ Compatibilidad: Los componentes son compatibles")
+            self.label_estado.setText("✅ Análisis completado - Componentes compatibles")
+            icono = QMessageBox.Information
+        else:
+            self.label_compatibilidad.setText("❌ Compatibilidad: Se detectaron incompatibilidades")
+            self.label_estado.setText("⚠️ Análisis completado - Incompatibilidades detectadas")
+            icono = QMessageBox.Warning
         
-        QMessageBox.information(self, "Análisis de compatibilidad",
-            "✓ Todos los componentes marcados son compatibles entre sí.\n\n"
-            "Se ha detectado que podrías reutilizar:\n" +
-            "\n".join([f"• {comp}" for comp in componentes.keys()]))
+        dialogo = QMessageBox(self)
+        dialogo.setWindowTitle("Análisis de compatibilidad")
+        dialogo.setIcon(icono)
+        dialogo.setText(
+            "Resultados del análisis:\n\n" +
+            str(resultado_analisis) + "\n\n" +
+            "Componentes analizados:\n" +
+            "\n".join([f"• {comp}: {val}" for comp, val in componentes.items()]))
+        dialogo.exec_()
     
     def generar_configuraciones(self):
-        """Genera posibles configuraciones basadas en necesidades"""
+        """Genera posibles configuraciones basadas en necesidades, verificando compatibilidad primero"""
         datos = self._recoger_todos_datos()
         
         # Actualizar el modo directamente en el modelo del controlador
         modo_texto = "Web (PDFs + Internet)" if self.radio_web.isChecked() else "Local (solo PDFs)"
-        self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
+        self.controlador.modelo.modo_actual = modo_texto
+        self.controlador.modelo.sintomas = datos
         
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
+
+        self._verificar_compatibilidad_previa(
+            datos,
+            modelo_usado,
+            callback_si_compatible=lambda: self._continuar_generacion(datos, modelo_usado)
+        )
+    
+    def _continuar_generacion(self, datos, modelo_usado):
+        """Continúa la generación de configuraciones tras pasar la verificación de compatibilidad"""
         self.label_estado.setText(f"⏳ Generando configuraciones con {modelo_usado} (Ejecutando en 2º plano, por favor espera...)")
         QApplication.processEvents()
-        
         self.controlador.evaluar_hipotesis(datos)
-        # La ventana se mostrará automáticamente desde el QThread al terminar.
+    
+    def _mostrar_incompatibilidad(self, mensaje):
+        """Muestra un diálogo de incompatibilidad y detiene el proceso"""
+        self.label_estado.setText("❌ Se detectaron incompatibilidades entre los componentes existentes")
+        
+        dialogo = QMessageBox(self)
+        dialogo.setWindowTitle("⚠️ Incompatibilidad detectada")
+        dialogo.setIcon(QMessageBox.Warning)
+        dialogo.setText("Se han detectado incompatibilidades entre los componentes que ya posees.\n\n"
+                        "Debes revisar y quitar alguno de los componentes marcados antes de volver a generar configuraciones.")
+        dialogo.setDetailedText(mensaje)
+        dialogo.setStandardButtons(QMessageBox.Ok)
+        dialogo.exec_()
     
     def obtener_recomendacion(self):
         """Obtiene la recomendación final"""
+        datos = self._recoger_todos_datos()
+
         # Actualizar el modo directamente en el modelo del controlador
         modo_texto = "Web (PDFs + Internet)" if self.radio_web.isChecked() else "Local (solo PDFs)"
         self.controlador.modelo.modo_actual = modo_texto  # <-- Acceso directo al modelo
+        self.controlador.modelo.sintomas = datos
         
         modelo_usado = "CommonKADS" if self.radio_commonkads.isChecked() else f"LLM ({self.combo_llm.currentText()})"
+        self._verificar_compatibilidad_previa(
+            datos,
+            modelo_usado,
+            callback_si_compatible=lambda: self._continuar_recomendacion(modelo_usado)
+        )
+        
+    def _continuar_recomendacion(self, modelo_usado):
+        """Continúa con el veredicto final tras pasar la verificación de compatibilidad"""
         self.label_estado.setText(f"⏳ Calculando recomendación con {modelo_usado} (Ejecutando en 2º plano, no cierres la app...)")
         QApplication.processEvents()
-        
+
         self.controlador.diagnosticar()
         # Las ventanas se mostrarán automáticamente desde el QThread al terminar.
+
+    def _verificar_compatibilidad_previa(self, datos, modelo_usado, callback_si_compatible):
+        """Verifica compatibilidad de componentes existentes antes de continuar con una acción crítica."""
+        componentes = datos.get('componentes_actuales', {})
+        componentes_reales = {k: v for k, v in componentes.items()
+                              if v and v != "Modelo no especificado"}
+
+        if len(componentes_reales) >= 2:
+            self.label_estado.setText(f"⏳ Verificando compatibilidad de componentes existentes con {modelo_usado}...")
+            QApplication.processEvents()
+
+            usar_llm = self.radio_llm.isChecked()
+            self.controlador.evaluar_compatibilidad(
+                componentes_reales,
+                usar_llm,
+                lambda ok, res: callback_si_compatible() if ok else self._mostrar_incompatibilidad(res)
+            )
+        else:
+            callback_si_compatible()
         
     def _recoger_componentes_actuales(self):
         """Recoge los componentes que el usuario ha marcado"""
@@ -702,7 +747,6 @@ class VentanaPrincipal(QMainWindow):
         
         datos = {
             'perfil': {
-                'experiencia': self.combo_experiencia.currentText(),
                 'presupuesto': self.spin_presupuesto.value(),
                 'prioridad': self.combo_prioridad.currentText()
             },
@@ -710,13 +754,6 @@ class VentanaPrincipal(QMainWindow):
             'uso': {
                 'principal': self.uso_seleccionado,
                 'detalles': self.detalles_uso.toPlainText()
-            },
-            'restricciones': {
-                'marca': self.combo_marca.currentText(),
-                'tamano_caja': self.combo_caja.currentText(),
-                'overclock': self.check_overclock.isChecked(),
-                'rgb': self.check_rgb.isChecked(),
-                'futuras_ampliaciones': self.check_futuro.isChecked()
             },
             'conocimiento': {
                 'modelo': {
@@ -737,24 +774,19 @@ class VentanaPrincipal(QMainWindow):
     # Métodos para ventanas secundarias (con manejo de errores)
     def mostrar_ventana_hipotesis(self):
         """Muestra la ventana de configuraciones posibles"""
-        # Si ya hay una ventana visible, traerla al frente
         if self.ventana_hipotesis is not None:
             try:
                 if self.ventana_hipotesis.isVisible():
                     self.ventana_hipotesis.raise_()
                     self.ventana_hipotesis.activateWindow()
-                    # Forzar actualización de datos por si acaso
-                    self.ventana_hipotesis.actualizar_datos()
                     return
             except RuntimeError:
                 self.ventana_hipotesis = None
         
-        # Crear nueva ventana solo si no existe o fue eliminada
         self.ventana_hipotesis = VentanaHipotesis(self.controlador)
         self._posicionar_ventana_cascada(self.ventana_hipotesis)
         self.ventana_hipotesis.setWindowTitle("Configuraciones posibles")
         self.ventana_hipotesis.show()
-        self.ventana_hipotesis.actualizar_datos()  # Forzar actualización
     
     def mostrar_ventana_diagnostico(self):
         """Muestra la ventana de recomendación final"""
@@ -828,6 +860,20 @@ class VentanaPrincipal(QMainWindow):
         ventana.move(main_pos.x() + 50 + offset, main_pos.y() + 50 + offset)
         self.contador_ventanas += 1
     
+    def _actualizar_label_pdfs(self):
+        """Actualiza el label de PDFs cargados en la sección Estado actual"""
+        n = len(self.controlador.modelo.pdfs)
+        self.label_pdfs_cargados.setText(f"📄 PDFs cargados: {n}")
+        if n > 0:
+            nombres = ", ".join(p['nombre'] for p in self.controlador.modelo.pdfs)
+            self.label_pdfs_cargados.setToolTip(f"Archivos: {nombres}")
+            self.label_estado_conocimiento.setText("✅ Base de conocimiento lista")
+            self.label_estado_conocimiento.setStyleSheet("font-weight: normal; color: #27ae60;")
+        else:
+            self.label_pdfs_cargados.setToolTip("")
+            self.label_estado_conocimiento.setText("⚠️ Sin PDFs cargados")
+            self.label_estado_conocimiento.setStyleSheet("font-weight: normal; color: #e67e22;")
+
     def actualizar_vistas(self):
         """Actualiza vistas cuando el modelo cambia"""  
         ventanas = [

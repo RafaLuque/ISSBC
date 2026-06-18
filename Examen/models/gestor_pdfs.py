@@ -1,5 +1,6 @@
 import os
 import json
+import PyPDF2
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QObject
 from utils.rutas import obtener_ruta_relativa
@@ -49,11 +50,24 @@ class GestorPDFs(QObject):
     
     def obtener_contenido_texto(self, ruta_pdf):
         """
-        Simula la extracción de texto de un PDF.
-        En una implementación real usarías PyPDF2 o similar.
+        Extrae el texto real de un PDF usando PyPDF2.
         """
-        # Simulación - en producción usarías una librería como PyPDF2
-        return f"[Contenido simulado del PDF: {os.path.basename(ruta_pdf)}]"
+        try:
+            texto = ""
+            with open(ruta_pdf, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for pagina in reader.pages:
+                    texto_pagina = pagina.extract_text()
+                    if texto_pagina:
+                        texto += texto_pagina + "\n"
+            texto = texto.strip()
+            if texto:
+                return texto
+            else:
+                return f"[No se pudo extraer texto de {os.path.basename(ruta_pdf)}]"
+        except Exception as e:
+            print(f"❌ Error leyendo PDF {ruta_pdf}: {e}")
+            return f"[Error leyendo {os.path.basename(ruta_pdf)}: {e}]"
     
     def guardar_pdfs(self):
         """

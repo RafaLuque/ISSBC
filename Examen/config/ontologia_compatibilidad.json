@@ -1,0 +1,328 @@
+{
+  "metadata": {
+    "nombre": "Ontología de Compatibilidad de Hardware",
+    "version": "1.0.0",
+    "fuente": "pdfs_utilizados/guia_compatibilidad.pdf",
+    "fecha_creacion": "2026-04-21",
+    "descripcion": "Base de conocimiento estructurada para análisis de compatibilidad CommonKADS."
+  },
+  "cpu_socket_chipset": [
+    {
+      "familia_cpu": "Intel Core 10th/11th Gen",
+      "socket": "LGA1200",
+      "chipsets_compatibles": ["H510", "B560", "Z590"],
+      "chipset_recomendado": "B560"
+    },
+    {
+      "familia_cpu": "Intel Core 12th/13th/14th Gen",
+      "socket": "LGA1700",
+      "chipsets_compatibles": ["H610", "B660", "B760", "Z690", "Z790"],
+      "chipset_recomendado": "B760"
+    },
+    {
+      "familia_cpu": "AMD Ryzen 5000 series",
+      "socket": "AM4",
+      "chipsets_compatibles": ["A520", "B550", "X570"],
+      "chipset_recomendado": "B550"
+    },
+    {
+      "familia_cpu": "AMD Ryzen 7000 series",
+      "socket": "AM5",
+      "chipsets_compatibles": ["B650", "B650E", "X670", "X670E"],
+      "chipset_recomendado": "B650"
+    },
+    {
+      "familia_cpu": "AMD Ryzen 9000 series",
+      "socket": "AM5",
+      "chipsets_compatibles": ["B650", "B650E", "X670", "X670E", "X870"],
+      "chipset_recomendado": "X670"
+    }
+  ],
+  "ram_compatibilidad": [
+    {
+      "tipo_ram": "DDR4",
+      "sockets_compatibles": ["AM4", "LGA1200"],
+      "maximo_por_canal_gb": 32,
+      "notas": "Compatible con Ryzen 5000 e Intel 10/11 Gen."
+    },
+    {
+      "tipo_ram": "DDR5",
+      "sockets_compatibles": ["AM5", "LGA1700"],
+      "maximo_por_canal_gb": 64,
+      "notas": "Requiere placa base compatible con DDR5."
+    }
+  ],
+  "fuentes_por_tipo_configuracion": [
+    {
+      "tipo_configuracion": "Oficina / Básico",
+      "fuente_w_min": 400,
+      "fuente_w_max": 500,
+      "certificacion_recomendada": "80+ Bronze",
+      "conectores": ["24-pin ATX", "4+4 CPU"]
+    },
+    {
+      "tipo_configuracion": "Gaming entrada (GTX 1660 / RTX 3050)",
+      "fuente_w_min": 550,
+      "fuente_w_max": 650,
+      "certificacion_recomendada": "80+ Bronze",
+      "conectores": ["24-pin ATX", "8-pin CPU", "6+2 PCIe"]
+    },
+    {
+      "tipo_configuracion": "Gaming medio (RTX 4060 / RX 7600)",
+      "fuente_w_min": 650,
+      "fuente_w_max": 750,
+      "certificacion_recomendada": "80+ Gold",
+      "conectores": ["24-pin ATX", "8-pin CPU", "2x 6+2 PCIe"]
+    },
+    {
+      "tipo_configuracion": "Gaming alto (RTX 4070 / RX 7800 XT)",
+      "fuente_w_min": 750,
+      "fuente_w_max": 850,
+      "certificacion_recomendada": "80+ Gold",
+      "conectores": ["24-pin ATX", "8-pin CPU", "3x 6+2 PCIe"]
+    },
+    {
+      "tipo_configuracion": "Workstation / RTX 4080/4090",
+      "fuente_w_min": 1000,
+      "fuente_w_max": 1200,
+      "certificacion_recomendada": "80+ Platinum",
+      "conectores": ["ATX 3.0", "12VHPWR"]
+    }
+  ],
+  "reglas_equilibrio": [
+    {
+      "uso_principal": "Gaming 1080p",
+      "cpu_recomendada": ["Ryzen 5", "Intel i5"],
+      "gpu_recomendada": ["RTX 4060", "RX 7600"],
+      "proporcion_presupuesto": {
+        "gpu": 40,
+        "cpu": 30,
+        "resto": 30
+      }
+    },
+    {
+      "uso_principal": "Gaming 1440p",
+      "cpu_recomendada": ["Ryzen 7", "Intel i7"],
+      "gpu_recomendada": ["RTX 4070", "RX 7800 XT"],
+      "proporcion_presupuesto": {
+        "gpu": 50,
+        "cpu": 25,
+        "resto": 25
+      }
+    },
+    {
+      "uso_principal": "Edición vídeo",
+      "cpu_recomendada": ["Ryzen 9", "Intel i9"],
+      "gpu_recomendada": ["RTX 4060 Ti", "RTX 4070"],
+      "proporcion_presupuesto": {
+        "cpu": 35,
+        "gpu": 30,
+        "ram": 35
+      }
+    },
+    {
+      "uso_principal": "Programación",
+      "cpu_recomendada": ["Ryzen 7", "Intel i7"],
+      "gpu_recomendada": ["Gráficos integrados", "GPU básica"],
+      "proporcion_presupuesto": {
+        "cpu": 40,
+        "ram": 40,
+        "ssd": 20
+      }
+    },
+    {
+      "uso_principal": "Streaming",
+      "cpu_recomendada": ["Ryzen 7", "Intel i7"],
+      "gpu_recomendada": ["RTX 4060", "RTX 4070"],
+      "proporcion_presupuesto": {
+        "cpu": 35,
+        "gpu": 35,
+        "resto": 30
+      }
+    }
+  ],
+  "compatibilidad_caja": [
+    {
+      "factor_forma_placa": "E-ATX",
+      "cajas_compatibles": ["Full Tower"],
+      "tamano_minimo": "Grande"
+    },
+    {
+      "factor_forma_placa": "ATX",
+      "cajas_compatibles": ["ATX", "Full Tower"],
+      "tamano_minimo": "Mediano-Grande"
+    },
+    {
+      "factor_forma_placa": "Micro-ATX",
+      "cajas_compatibles": ["Micro-ATX", "ATX"],
+      "tamano_minimo": "Mediano"
+    },
+    {
+      "factor_forma_placa": "Mini-ITX",
+      "cajas_compatibles": ["Mini-ITX", "Micro-ATX"],
+      "tamano_minimo": "Pequeño"
+    }
+  ],
+  "recomendaciones_por_presupuesto": [
+    {
+      "rango_eur": {"min": 500, "max": 700},
+      "perfil": "Gaming básico / Oficina",
+      "recomendacion": {
+        "cpu": ["AMD Ryzen 5 5600G", "Intel i3-12100"],
+        "gpu": ["RX 6600", "RTX 3050"],
+        "ram": "16GB DDR4 3200MHz",
+        "placa_base": ["B550", "H610"],
+        "almacenamiento": "SSD 500GB NVMe",
+        "fuente": "550W 80+ Bronze",
+        "caja": "Básica con flujo de aire"
+      }
+    },
+    {
+      "rango_eur": {"min": 800, "max": 1200},
+      "perfil": "Gaming medio",
+      "recomendacion": {
+        "cpu": ["AMD Ryzen 5 7600", "Intel i5-12400F", "Intel i5-13400F"],
+        "gpu": ["RTX 4060", "RX 7600 XT"],
+        "ram": "16-32GB DDR5 5600MHz",
+        "placa_base": ["B650", "B760"],
+        "almacenamiento": "SSD 1TB NVMe",
+        "fuente": "650W 80+ Gold",
+        "caja": "ATX con 3-4 ventiladores"
+      }
+    },
+    {
+      "rango_eur": {"min": 1200, "max": 1500},
+      "perfil": "Gaming alto 1440p",
+      "recomendacion": {
+        "cpu": ["AMD Ryzen 7 7700", "Intel i5-13600K"],
+        "gpu": ["RTX 4070", "RX 7800 XT"],
+        "ram": "32GB DDR5 6000MHz",
+        "placa_base": ["B650E", "Z790"],
+        "almacenamiento": "SSD 1TB NVMe + HDD 1TB",
+        "fuente": "750W 80+ Gold",
+        "caja": "ATX con buen flujo y gestión de cables"
+      }
+    },
+    {
+      "rango_eur": {"min": 1500, "max": 2000},
+      "perfil": "Gaming entusiasta / Workstation",
+      "recomendacion": {
+        "cpu": ["AMD Ryzen 7 7800X3D", "Intel i7-13700K", "Intel i7-14700K"],
+        "gpu": ["RTX 4070 Super", "RTX 4070 Ti", "RX 7900 GRE"],
+        "ram": "32GB DDR5 6000MHz CL30",
+        "placa_base": ["X670", "Z790"],
+        "almacenamiento": "SSD 2TB NVMe Gen4",
+        "fuente": "850W 80+ Gold",
+        "caja": "ATX con ventiladores RGB y filtros"
+      }
+    },
+    {
+      "rango_eur": {"min": 2000, "max": 3000},
+      "perfil": "Gaming 4K / Edición profesional",
+      "recomendacion": {
+        "cpu": ["AMD Ryzen 9 7950X", "Intel i9-13900K", "Intel i9-14900K"],
+        "gpu": ["RTX 4080 Super", "RX 7900 XTX"],
+        "ram": "64GB DDR5 6000MHz",
+        "placa_base": ["X670E", "Z790 de gama alta"],
+        "almacenamiento": "SSD 2TB NVMe Gen4 + SSD 2TB",
+        "fuente": "1000W 80+ Gold/Platinum",
+        "refrigeracion": "Líquida 360mm"
+      }
+    }
+  ],
+  "reglas_compatibilidad_adicionales": {
+    "gpu_fuente_minima": [
+      {
+        "gpus": ["RTX 4060", "RX 7600"],
+        "fuente_minima_w": 550
+      },
+      {
+        "gpus": ["RTX 4070", "RX 7800 XT"],
+        "fuente_minima_w": 650
+      },
+      {
+        "gpus": ["RTX 4080", "RX 7900 XTX"],
+        "fuente_minima_w": 850
+      },
+      {
+        "gpus": ["RTX 4090"],
+        "fuente_minima_w": 1000,
+        "fuente_recomendada_w": 1200
+      }
+    ],
+    "refrigeracion_cpu": [
+      {
+        "condicion": "CPU básicas (65W)",
+        "recomendacion": "Cooler incluido válido"
+      },
+      {
+        "condicion": "CPU gama media (105W)",
+        "recomendacion": "Cooler de torre básico"
+      },
+      {
+        "condicion": "CPU gama alta (>125W)",
+        "recomendacion": "Cooler doble torre o líquida"
+      },
+      {
+        "condicion": "CPU con overclocking",
+        "recomendacion": "Refrigeración líquida recomendada"
+      }
+    ],
+    "ram_maxima_por_chipset": [
+      {
+        "chipsets": ["H610", "A520"],
+        "ram_maxima_gb": 64
+      },
+      {
+        "chipsets": ["B660", "B550"],
+        "ram_maxima_gb": 128
+      },
+      {
+        "chipsets": ["Z690", "X570"],
+        "ram_maxima_gb": "128-256"
+      }
+    ]
+  },
+  "ejemplos_configuracion": [
+    {
+      "nombre": "Gaming 1080p",
+      "presupuesto_eur": 900,
+      "componentes": {
+        "cpu": "AMD Ryzen 5 5600",
+        "gpu": "NVIDIA RTX 3060 12GB",
+        "ram": "16GB DDR4 3200MHz",
+        "placa": "MSI B550M PRO",
+        "ssd": "Kingston NV2 1TB",
+        "fuente": "Corsair CV650 650W",
+        "caja": "Antec NX410"
+      }
+    },
+    {
+      "nombre": "Gaming 1440p",
+      "presupuesto_eur": 1500,
+      "componentes": {
+        "cpu": "AMD Ryzen 5 7600X",
+        "gpu": "NVIDIA RTX 4070 12GB",
+        "ram": "32GB DDR5 6000MHz",
+        "placa": "Gigabyte B650 AORUS",
+        "ssd": "Samsung 980 Pro 1TB",
+        "fuente": "NZXT C750 750W Gold",
+        "caja": "NZXT H5 Flow"
+      }
+    },
+    {
+      "nombre": "Edición de vídeo",
+      "presupuesto_eur": 1800,
+      "componentes": {
+        "cpu": "Intel i7-13700K",
+        "gpu": "NVIDIA RTX 4070 Ti 12GB",
+        "ram": "64GB DDR5 5600MHz",
+        "placa": "ASUS PRIME Z790-P",
+        "ssd": "WD Black SN770 2TB",
+        "hdd": "Seagate Barracuda 4TB",
+        "fuente": "Seasonic Focus 850W Gold",
+        "caja": "Fractal Design Pop Air"
+      }
+    }
+  ]
+}

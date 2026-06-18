@@ -1,6 +1,12 @@
 {
     "dominio": "configuracion_pc",
     "titulo": "Sistema Experto para Configuración de PC",
+
+    "google_search": {
+        "api_key": "AIzaSyCWoG1zjcQeTz1fGnAEN0OBqoswJJ-zsyg",
+        "cx": "777d24c5056734c7e",
+        "habilitado": false
+    },
     
     "sintomas": {
         "categorias": [
@@ -34,11 +40,6 @@
             },
             {
                 "nombre": "¿Tiene componentes reutilizables?",
-                "tipo": "booleano",
-                "por_defecto": false
-            },
-            {
-                "nombre": "¿Necesita monitor/periféricos?",
                 "tipo": "booleano",
                 "por_defecto": false
             },

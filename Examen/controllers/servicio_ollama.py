@@ -59,28 +59,8 @@ class ServicioOllama:
 
     def cambiar_modelo(self, modelo):
         """Cambia el modelo de Ollama a usar"""
-        import urllib.request
-        import json
-        
-        # Si hay un modelo anterior, intentar descargarlo
-        if hasattr(self, 'modelo') and self.modelo != modelo:
-            try:
-                # Llamar a la API para descargar el modelo anterior
-                req = urllib.request.Request(
-                    f"{self.url_base}/api/generate",
-                    data=json.dumps({"model": self.modelo, "keep_alive": 0}).encode('utf-8'),
-                    headers={'Content-Type': 'application/json'},
-                    method='POST'
-                )
-                urllib.request.urlopen(req, timeout=2)
-                print(f"✅ Modelo {self.modelo} descargado de memoria")
-            except:
-                pass
-        
         self.modelo = modelo
-        self._modelo_usuario = True
         self._verificado = True
-        print(f"✅ Modelo cambiado a: {self.modelo}")
     
     def verificar_conexion(self):
         """Verifica que Ollama esté funcionando en el puerto HTTP"""
@@ -115,7 +95,7 @@ class ServicioOllama:
         Realiza una consulta post a Ollama usando la API REST
         """
         # Verificar modelo justo antes de consultar por si Ollama se arrancó después de la UI
-        #self._seleccionar_modelo_disponible()
+        self._seleccionar_modelo_disponible()
         
         prompt_completo = f"{contexto_pdfs}\n\n{prompt}" if contexto_pdfs else prompt
         
@@ -167,19 +147,40 @@ class ServicioOllama:
             print(f"❌ Error inesperado con Ollama: {e}")
             return f"Error inesperado al conectar con Ollama: {str(e)}"
     
-    def generar_hipotesis(self, prompt, contexto_pdfs=""):
+    def generar_hipotesis(self, prompt, contexto_pdfs="", modo="Local (solo PDFs)"):
         """Genera hipótesis usando Ollama asegurando formato JSON"""
+        
+        if modo == "Local (solo PDFs)":
+            instruccion_fuente = """IMPORTANTE: Basa tus recomendaciones EXCLUSIVAMENTE en la información contenida en los PDFs locales proporcionados más abajo.
+Solo recomienda componentes, marcas y modelos que aparezcan mencionados en dichos documentos.
+Si los PDFs no contienen información suficiente, indícalo en los detalles de cada hipótesis.
+NO inventes datos ni uses conocimiento externo que no esté en los PDFs."""
+        else:
+            instruccion_fuente = """Usa la información de los PDFs locales proporcionados como referencia principal y contrástalos con tu conocimiento general.
+Si los PDFs mencionan componentes o precios, priorízalos, pero puedes complementar con información adicional."""
+        
         prompt_hipotesis = f"""
-Eres un experto en hardware de ordenadores. Basándote en los datos del usuario, genera 3 hipótesis sobre la configuración más adecuada.
+Eres un experto en hardware de ordenadores.
+
+{instruccion_fuente}
+
+Basándote en los datos del usuario, genera 3 hipótesis sobre la configuración más adecuada.
+
+REGLAS OBLIGATORIAS:
+1. Si el usuario YA POSEE componentes, DEBES incluirlos tal cual en TODAS las configuraciones. NO los reemplaces ni los ignores.
+2. Solo propón componentes NUEVOS para las categorías que el usuario NO tiene.
+3. Cada configuración debe ser un PC COMPLETO (CPU, Placa Base, RAM, GPU, Fuente, Almacenamiento, Caja).
+4. Indica claramente qué componentes son los que ya tiene ("[YA TIENE]") y cuáles son nuevos.
+5. El presupuesto indicado es SOLO para los componentes nuevos, no para los que ya posee.
 
 DATOS DEL USUARIO:
 {prompt}
 
 Imprime SOLO UN JSON válido. Sin explicaciones previas, sin bloques tipo ```json:
 [
-    {{"nombre": "Configuración sugerida 1", "probabilidad": 0.85, "estado": "posible", "detalles": "breve justificación"}},
-    {{"nombre": "Configuración sugerida 2", "probabilidad": 0.70, "estado": "posible", "detalles": "breve justificación"}},
-    {{"nombre": "Configuración sugerida 3", "probabilidad": 0.50, "estado": "posible", "detalles": "breve justificación"}}
+    {{"nombre": "Config. 1 (resumen breve de piezas clave)", "probabilidad": 0.85, "estado": "posible", "detalles": "Lista TODOS los componentes indicando [YA TIENE] o [NUEVO] y justifica brevemente"}},
+    {{"nombre": "Config. 2 (resumen breve de piezas clave)", "probabilidad": 0.70, "estado": "posible", "detalles": "Lista TODOS los componentes indicando [YA TIENE] o [NUEVO] y justifica brevemente"}},
+    {{"nombre": "Config. 3 (resumen breve de piezas clave)", "probabilidad": 0.50, "estado": "posible", "detalles": "Lista TODOS los componentes indicando [YA TIENE] o [NUEVO] y justifica brevemente"}}
 ]
 """
         respuesta = self.consultar(prompt_hipotesis, contexto_pdfs)
@@ -193,91 +194,398 @@ Imprime SOLO UN JSON válido. Sin explicaciones previas, sin bloques tipo ```jso
                  "detalles": respuesta
              }]
 
-        # Extraer JSON con regex previniendo basura (Markdown etc)
+        # Extraer JSON con múltiples estrategias de parseo
         try:
-            match = re.search(r'\[\s*\{.*?\}\s*\]', respuesta, re.DOTALL)
-            if match:
-                return json.loads(match.group(0))
-            else:
-                return json.loads(respuesta)
+            hipotesis = self._parsear_json_hipotesis(respuesta)
+            if hipotesis:
+                return hipotesis
         except Exception as e:
             print(f"⚠️ Error extrayendo JSON de la respuesta: {e}")
-            return [
-                {
-                    "nombre": "Error de parseo", 
-                    "probabilidad": 0.0, 
-                    "estado": "error", 
-                    "detalles": "El asistente generó texto pero no pudo ser leído como JSON."
-                }
-            ]
+        
+        # Último recurso: construir hipótesis a partir del texto libre
+        print("⚠️ No se pudo parsear JSON, construyendo hipótesis desde texto libre")
+        return [{
+            "nombre": "Configuración sugerida por IA",
+            "probabilidad": 0.75,
+            "estado": "posible",
+            "detalles": respuesta[:1500] if len(respuesta) > 1500 else respuesta
+        }]
     
+    def _parsear_json_hipotesis(self, respuesta):
+        """Intenta parsear la respuesta del LLM como JSON con múltiples estrategias"""
+        # Limpiar bloques de pensamiento tipo <think>...</think>
+        respuesta_limpia = re.sub(r'<think>.*?</think>', '', respuesta, flags=re.DOTALL).strip()
+        
+        # Eliminar bloques de código markdown ```json ... ```
+        match_bloque = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', respuesta_limpia, re.DOTALL)
+        if match_bloque:
+            try:
+                return json.loads(match_bloque.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # Estrategia 1: buscar el array JSON completo con regex greedy
+        match = re.search(r'\[\s*\{.*\}\s*\]', respuesta_limpia, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                # Intentar reparar JSON común (trailing commas, etc)
+                texto_json = match.group(0)
+                texto_json = re.sub(r',\s*([}\]])', r'\1', texto_json)  # trailing commas
+                try:
+                    return json.loads(texto_json)
+                except json.JSONDecodeError:
+                    pass
+        
+        # Estrategia 2: buscar objetos JSON individuales y construir array
+        objetos = re.findall(r'\{[^{}]*"nombre"[^{}]*\}', respuesta_limpia, re.DOTALL)
+        if objetos:
+            resultado = []
+            for obj_str in objetos[:3]:
+                try:
+                    resultado.append(json.loads(obj_str))
+                except json.JSONDecodeError:
+                    pass
+            if resultado:
+                return resultado
+        
+        # Estrategia 3: parseo directo
+        try:
+            return json.loads(respuesta_limpia)
+        except json.JSONDecodeError:
+            pass
+        
+        return None
+    
+    def _validar_url(self, url, timeout=5):
+        """
+        Verifica que una URL existe y responde con código HTTP < 400.
+        Devuelve True si la URL es accesible, False en caso contrario.
+        """
+        import ssl
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+            req = urllib.request.Request(
+                url,
+                method='HEAD',
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                                  'Chrome/125.0.0.0 Safari/537.36'
+                }
+            )
+            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+                return response.status < 400
+        except Exception:
+            return False
+
+    def _filtrar_urls_validas(self, resultados, max_validos=5):
+        """
+        Recorre la lista de resultados y descarta los que tienen URLs rotas.
+        Devuelve solo los que responden correctamente (hasta max_validos).
+        """
+        validos = []
+        for r in resultados:
+            url = r.get('url', '')
+            if not url or not url.startswith('http'):
+                continue
+            if self._validar_url(url):
+                validos.append(r)
+                print(f"✅ URL válida: {url}")
+                if len(validos) >= max_validos:
+                    break
+            else:
+                print(f"❌ URL rota descartada: {url}")
+        return validos
+
     def buscar_en_internet(self, consulta):
-        """Busca fuentes reales en internet basándose en las necesidades del usuario"""
+        """Busca fuentes reales en internet. Usa Google Search API si está configurada, si no DuckDuckGo."""
+        google_cfg = self.config.get('google_search', {})
+        api_key = google_cfg.get('api_key', '')
+        cx = google_cfg.get('cx', '')
+        habilitado = google_cfg.get('habilitado', False)
+        
+        if habilitado and api_key and cx:
+            resultados = self._buscar_google_api(consulta, api_key, cx)
+            if resultados:
+                return self._filtrar_urls_validas(resultados)
+            print("⚠️ Google Search API falló, usando DuckDuckGo como fallback")
+        
+        resultados = self._buscar_duckduckgo(consulta)
+        return self._filtrar_urls_validas(resultados)
+    
+    def _buscar_google_api(self, consulta, api_key, cx):
+        """Búsqueda real usando Google Custom Search JSON API"""
         import urllib.request
         import urllib.parse
-        import re
-        import datetime
+        import ssl
         
         resultados = []
         try:
-            # Extraer algunas palabras para no hacer la query gigante
+            # Construir query orientada a tiendas de componentes
             palabras = [p for p in consulta.split() if len(p) > 3]
-            query_limpia = " ".join(palabras[:6]) + " componentes pc tienda"
+            query_limpia = " ".join(palabras[:8]) + " precio comprar"
             q = urllib.parse.quote_plus(query_limpia)
             
-            # Usar HTML simplificado de DuckDuckGo para evitar bloqueos
-            req = urllib.request.Request(
-                f"https://html.duckduckgo.com/html/?q={q}", 
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-            )
+            url = (f"https://www.googleapis.com/customsearch/v1"
+                   f"?key={api_key}&cx={cx}&q={q}&num=5&lr=lang_es&gl=es")
             
-            with urllib.request.urlopen(req, timeout=5) as response:
-                html = response.read().decode('utf-8')
+            req = urllib.request.Request(url, headers={
+                'Accept': 'application/json',
+                'User-Agent': 'PCConfigExpert/1.0'
+            })
+            
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            for item in data.get('items', [])[:5]:
+                titulo = item.get('title', 'Sin título')
+                link = item.get('link', '')
+                snippet = item.get('snippet', 'Sin descripción')
                 
-                # Regex para encontrar enlaces de búsqueda orgánica en DuckDuckGo
-                enlaces = re.findall(r'<a class="result__url" href="([^"]+)">(.*?)</a>', html)
+                # Extraer dominio
+                try:
+                    dominio = link.split('/')[2]
+                except Exception:
+                    dominio = 'Web'
                 
-                # Regex para los fragmentos de texto
-                fragmentos = re.findall(r'<a class="result__snippet[^>]*>(.*?)</a>', html)
-                
-                for idx, (url, display) in enumerate(enlaces[:3]):
-                    # Limpiar la URL de la redirección de DuckDuckGo si existe
-                    if 'uddg=' in url:
-                        real_url = urllib.parse.unquote(url.split('uddg=')[1].split('&')[0])
-                    else:
-                        real_url = url
-                        
-                    if real_url.startswith('//'):
-                        real_url = "https:" + real_url
-                        
-                    # Extraer dominio de la URL de forma segura
-                    try:
-                        dominio = real_url.split('/')[2]
-                    except:
-                        dominio = "Fuente Web"
-                        
-                    # Sacar el snippet correspondiente
-                    frag_limpio = "Búsqueda web automática."
-                    if idx < len(fragmentos):
-                        # Limpiar tags HTML (<b> tags)
-                        frag_limpio = re.sub(r'<[^>]+>', '', fragmentos[idx])[:100] + "..."
-                        
-                    resultados.append({
-                        "titulo": f"Búsqueda automática ({dominio})", 
-                        "url": real_url, 
-                        "fragmento": frag_limpio, 
-                        "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
-                    })
+                resultados.append({
+                    "titulo": titulo,
+                    "url": link,
+                    "fragmento": snippet[:200],
+                    "fecha": datetime.datetime.now().strftime("%d/%m/%Y"),
+                    "fuente": f"Google Search ({dominio})"
+                })
+            
+            print(f"✅ Google Search API: {len(resultados)} resultados obtenidos")
+            
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8') if hasattr(e, 'read') else str(e)
+            print(f"❌ Error Google Search API ({e.code}): {error_body[:200]}")
         except Exception as e:
-            print(f"⚠️ Error al buscar en internet de verdad: {e}")
-            
+            print(f"❌ Error en Google Search API: {e}")
+        
         return resultados
     
+    def _buscar_duckduckgo(self, consulta):
+        """Búsqueda fallback usando DuckDuckGo (sin API key)"""
+        import urllib.request
+        import urllib.parse
+        import ssl
+        
+        resultados = []
+        
+        # Construir query
+        palabras = [p for p in consulta.split() if len(p) > 3]
+        query_limpia = " ".join(palabras[:6]) + " componentes pc precio"
+        q = urllib.parse.quote_plus(query_limpia)
+        
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        # Estrategia 1: DuckDuckGo API (JSON, más fiable)
+        try:
+            req = urllib.request.Request(
+                f"https://api.duckduckgo.com/?q={q}&format=json&no_redirect=1&no_html=1&skip_disambig=1",
+                headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'}
+            )
+            with urllib.request.urlopen(req, timeout=8, context=ctx) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                
+                # Resultados relacionados
+                for item in data.get('RelatedTopics', [])[:10]:
+                    if 'FirstURL' in item and item['FirstURL']:
+                        texto = item.get('Text', 'Sin descripción')
+                        url = item['FirstURL']
+                        # Descartar URLs internas de DuckDuckGo
+                        if 'duckduckgo.com' in url:
+                            continue
+                        # Descartar URLs de Wikipedia (suelen ser irrelevantes para componentes)
+                        if 'wikipedia.org' in url:
+                            continue
+                        try:
+                            dominio = url.split('/')[2]
+                        except Exception:
+                            dominio = "Web"
+                        resultados.append({
+                            "titulo": texto[:80],
+                            "url": url,
+                            "fragmento": texto[:200],
+                            "fecha": datetime.datetime.now().strftime("%d/%m/%Y"),
+                            "fuente": f"DuckDuckGo ({dominio})"
+                        })
+        except Exception as e:
+            print(f"⚠️ DuckDuckGo API JSON falló: {e}")
+        
+        # Estrategia 2: DuckDuckGo HTML con múltiples patrones regex
+        if not resultados:
+            try:
+                req = urllib.request.Request(
+                    f"https://html.duckduckgo.com/html/?q={q}",
+                    headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'}
+                )
+                with urllib.request.urlopen(req, timeout=8, context=ctx) as response:
+                    html = response.read().decode('utf-8')
+                    
+                    # Múltiples patrones para extraer resultados (DuckDuckGo cambia el HTML)
+                    patrones_url = [
+                        r'<a[^>]*class="[^"]*result__url[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                        r'<a[^>]*rel="nofollow"[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                        r'<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                        r'href="(https?://(?!duckduckgo)[^"]+)"[^>]*>(.*?)</a>',
+                    ]
+                    
+                    patrones_snippet = [
+                        r'<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>',
+                        r'<td[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</td>',
+                        r'class="[^"]*snippet[^"]*"[^>]*>(.*?)</',
+                    ]
+                    
+                    enlaces = []
+                    for patron in patrones_url:
+                        enlaces = re.findall(patron, html, re.DOTALL)
+                        if enlaces:
+                            break
+                    
+                    fragmentos = []
+                    for patron in patrones_snippet:
+                        fragmentos = re.findall(patron, html, re.DOTALL)
+                        if fragmentos:
+                            break
+                    
+                    for idx, (url, display) in enumerate(enlaces[:5]):
+                        if 'uddg=' in url:
+                            real_url = urllib.parse.unquote(url.split('uddg=')[1].split('&')[0])
+                        else:
+                            real_url = url
+                        if real_url.startswith('//'):
+                            real_url = "https:" + real_url
+                        
+                        # Filtrar URLs internas de DuckDuckGo
+                        if 'duckduckgo.com' in real_url:
+                            continue
+                        
+                        try:
+                            dominio = real_url.split('/')[2]
+                        except Exception:
+                            dominio = "Web"
+                        
+                        frag = "Resultado de búsqueda web."
+                        if idx < len(fragmentos):
+                            frag = re.sub(r'<[^>]+>', '', fragmentos[idx]).strip()[:200]
+                        
+                        titulo = re.sub(r'<[^>]+>', '', display).strip()
+                        if not titulo:
+                            titulo = dominio
+                        
+                        resultados.append({
+                            "titulo": titulo,
+                            "url": real_url,
+                            "fragmento": frag,
+                            "fecha": datetime.datetime.now().strftime("%d/%m/%Y"),
+                            "fuente": f"DuckDuckGo ({dominio})"
+                        })
+            except Exception as e:
+                print(f"⚠️ DuckDuckGo HTML falló: {e}")
+        
+        print(f"✅ DuckDuckGo: {len(resultados)} resultados obtenidos")
+        return resultados
+    
+    def _recalcular_total(self, diagnostico):
+        """Extrae precios de componentes NUEVOS del texto y recalcula el total correctamente"""
+        # Buscar líneas con (NUEVO) y un precio en €
+        precios = re.findall(r'(?:NUEVO|nuevo)\).*?(\d+)[€\s]*(?:aprox|€)', diagnostico)
+        if not precios:
+            # Intentar patrón alternativo: número seguido de €
+            precios = re.findall(r'(?:NUEVO|nuevo).*?(\d+)\s*€', diagnostico)
+        
+        if precios:
+            total = sum(int(p) for p in precios)
+            # Eliminar cualquier línea TOTAL existente del LLM
+            diagnostico = re.sub(r'\n*.*TOTAL.*(?:nuevo|€).*', '', diagnostico, flags=re.IGNORECASE).rstrip()
+            diagnostico += f"\n\nTOTAL solo de componentes nuevos: {total}€"
+            print(f"🧮 Total recalculado: {' + '.join(precios)} = {total}€")
+        
+        return diagnostico
+    
+    def analizar_compatibilidad(self, componentes, contexto_pdfs=""):
+        """Analiza si una lista de componentes es compatible. Devuelve (es_compatible: bool, explicacion: str)"""
+
+        # Si no hay base documental local, no se debe inventar compatibilidad.
+        if (not contexto_pdfs) or ("No hay PDFs cargados" in contexto_pdfs):
+            return False, (
+                "VEREDICTO: NO DETERMINADO\n"
+                "EXPLICACION: No hay evidencia en PDFs locales para validar compatibilidad. "
+                "Carga al menos un PDF de compatibilidad para emitir veredicto técnico."
+            )
+        
+        # Formatear el diccionario a un texto legible
+        componentes_texto = "\n".join([f"- {k}: {v}" for k, v in componentes.items()])
+        
+        prompt = f"""
+Eres un experto en hardware. El usuario indica que YA POSEE los siguientes componentes:
+{componentes_texto}
+
+Reglas obligatorias para tu análisis:
+0. Debes basarte EXCLUSIVAMENTE en la información de "INFORMACION EXTRAIDA DE PDFS LOCALES". No uses conocimiento externo.
+1. Si un componente parece inventado, es falso, no existe en el mercado, o en el texto dice literalmente "Modelo no especificado", ignóralo (no lo cuentes como incompatibilidad).
+2. Analiza SOLO si existe alguna incompatibilidad técnica REAL entre los componentes especificados (por ejemplo: procesador con socket incompatible con la placa base, RAM DDR4 en placa DDR5, fuente de alimentación insuficiente, etc.).
+3. Si solo hay 0 o 1 componentes reales especificados, no puede haber incompatibilidad entre ellos.
+4. Si en los PDFs no aparece evidencia explícita para confirmar compatibilidad o incompatibilidad, responde "NO DETERMINADO".
+5. En EXPLICACION cita literalmente el dato clave de los PDFs (por ejemplo socket/chipset) y relaciónalo con los componentes.
+
+RESPONDE OBLIGATORIAMENTE con este formato exacto:
+VEREDICTO: COMPATIBLE, INCOMPATIBLE o NO DETERMINADO
+EXPLICACION: (breve explicación directa de por qué son compatibles o qué incompatibilidad existe)
+"""
+        respuesta = self.consultar(prompt, contexto_pdfs)
+        
+        # Parsear el veredicto
+        es_compatible = True
+        respuesta_up = respuesta.upper()
+
+        # Priorizar línea explícita VEREDICTO si existe
+        match_veredicto = re.search(r'VEREDICTO\s*:\s*([A-ZÁÉÍÓÚ ]+)', respuesta_up)
+        if match_veredicto:
+            etiqueta = match_veredicto.group(1).strip()
+            es_compatible = etiqueta.startswith("COMPATIBLE")
+        else:
+            # Fallback por heurística textual
+            cabecera = respuesta_up.split("EXPLICACION")[0] if "EXPLICACION" in respuesta_up else respuesta_up[:120]
+            if "INCOMPATIBLE" in cabecera or "NO DETERMINADO" in cabecera:
+                es_compatible = False
+        
+        return es_compatible, respuesta
+
     def generar_diagnostico(self, prompt, contexto_pdfs="", modo="Local (solo PDFs)"):
         """Genera diagnóstico usando Ollama con formateos explícitos"""
         
+        if modo == "Local (solo PDFs)":
+            instruccion_fuente = """IMPORTANTE: Basa tu diagnóstico y recomendaciones EXCLUSIVAMENTE en la información contenida en los PDFs locales proporcionados.
+Solo recomienda componentes, marcas, modelos y precios que aparezcan en dichos documentos.
+Si los PDFs no contienen información suficiente para algún componente, indícalo claramente.
+NO inventes datos ni uses conocimiento externo que no esté en los PDFs."""
+        else:
+            instruccion_fuente = """Usa la información de los PDFs locales como referencia principal y contrástalos con tu conocimiento general y fuentes web.
+Si los PDFs mencionan componentes o precios, priorízalos, pero puedes complementar con información adicional de internet."""
+        
         prompt_diagnostico = f"""
-Eres un experto en hardware español y debes proponer un presupuesto. Usa los datos del usuario y PDFs para tu respuesta.
+Eres un experto en hardware español y debes proponer un presupuesto.
+
+{instruccion_fuente}
+
+REGLAS OBLIGATORIAS:
+1. Si el usuario YA POSEE componentes, DEBES mantenerlos en la configuración final. NO los reemplaces.
+2. Solo recomienda componentes NUEVOS para lo que el usuario NO tiene.
+3. Marca cada componente como [YA TIENE] o [NUEVO] en el listado.
+4. El presupuesto debe reflejar SOLO el coste de los componentes NUEVOS.
+5. Asegura compatibilidad entre los componentes existentes y los nuevos.
 
 DATOS DEL USUARIO E HIPÓTESIS SELECCIONADA:
 {prompt}
@@ -285,10 +593,10 @@ DATOS DEL USUARIO E HIPÓTESIS SELECCIONADA:
 Proporciona tu respuesta utilizando EXACTAMENTE Y SÓLO este formato:
 
 DIAGNÓSTICO:
-[Lista componentes propuestos. Si es en España, precios en € con IVA aproximado]
+[Lista la configuración COMPLETA del PC: Placa base, CPU, GPU, RAM, Almacenamiento, Fuente de alimentación y Caja. Marca cada uno como [YA TIENE] o [NUEVO]. Para los nuevos, incluye precios en € con IVA aproximado. NO calcules el total, yo lo haré.]
 
 JUSTIFICACIÓN:
-[Explica por qué has elegido cada parte asegurando compatibilidad]
+[Explica por qué has elegido cada componente nuevo, asegurando compatibilidad con los que ya posee el usuario]
 
 FUENTES:
 [Añade 1 o 2 URLs reales de tiendas como pccomponentes o amazon si lo sabes]
@@ -310,6 +618,9 @@ FUENTES:
                 diag_part = re.split(r'DIAGN[ÓO]STICO:', partes[0], flags=re.IGNORECASE)
                 diagnostico = diag_part[1].strip() if len(diag_part) > 1 else partes[0].strip()
                 
+                # Recalcular el total de componentes NUEVOS con Python (el LLM suma mal)
+                diagnostico = self._recalcular_total(diagnostico)
+                
                 if len(partes) > 1:
                     parte_justificacion = partes[1]
                     # Por si agregó FUENTES: extra
@@ -317,16 +628,22 @@ FUENTES:
                         subpartes = re.split(r'FUENTES:', parte_justificacion, flags=re.IGNORECASE)
                         justificacion = subpartes[0].strip()
                         
-                        # Extraer todo lo que parezca una URL
+                        # Extraer todo lo que parezca una URL y validarla antes de añadirla
                         texto_urls = subpartes[1]
                         urls = re.findall(r'(https?://[^\s\)]+)', texto_urls)
-                        for idx, u in enumerate(urls[:2]):
-                            fuentes_diagnostico.append({
-                                "titulo": "URL sugerida por la Inteligencia Artificial",
-                                "url": u,
-                                "fragmento": "Enlace directo recomendado por el modelo",
-                                "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
-                            })
+                        for idx, u in enumerate(urls[:4]):
+                            if self._validar_url(u):
+                                fuentes_diagnostico.append({
+                                    "titulo": "URL verificada sugerida por la IA",
+                                    "url": u,
+                                    "fragmento": "Enlace directo verificado y recomendado por el modelo",
+                                    "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
+                                })
+                                print(f"✅ URL del LLM válida: {u}")
+                            else:
+                                print(f"❌ URL del LLM alucinada/rota, descartada: {u}")
+                            if len(fuentes_diagnostico) >= 2:
+                                break
                     else:
                         justificacion = parte_justificacion.strip()
             except Exception as e:
